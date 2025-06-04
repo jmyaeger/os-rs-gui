@@ -36,8 +36,15 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                             if item.as_ref().name() == "Unarmed" {
                                 rsx! { img { class: "opacity-60 filter invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                             } else {
-                                let cdn_image = format!("/assets/equipment/{}", item.get_image_path());
-                                rsx! { img { src: "{cdn_image}", alt: "{item.name()}" } }
+                                let image_path = item.as_ref().get_image_path();
+                                if image_path.is_empty() {
+                                    log::warn!("[GridSlot {:?}] Item '{}' has empty image path. Showing placeholder.", slot_type, item.as_ref().name());
+                                    rsx! { img { class: "opacity-60 filter invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
+                                } else {
+                                    let cdn_image = format!("/assets/equipment/{}", item.get_image_path());
+                                    rsx! { img { src: "{cdn_image}", alt: "{item.name()}" } }
+                                }
+
                             }
                         },
                         Err(_) => {

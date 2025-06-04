@@ -10,6 +10,12 @@ edition = "2021"
 dioxus = { version = "0.6.0", features = [] }
 osrs = { path = "../osrs" }
 getrandom = { version = "0.2", features = ["js"] }
+serde = "1.0.219"
+async-std = "1.13.1"
+serde_json = "1.0.140"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
+log = "0.4.27"
+dioxus-logger = "0.6.2"
 
 [features]
 default = ["web"]
@@ -19,8 +25,6 @@ web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 # The feature that are only required for the mobile = ["dioxus/mobile"] build target should be optional and only enabled in the mobile = ["dioxus/mobile"] feature
 mobile = ["dioxus/mobile"]
-
-[profile]
 
 [profile.wasm-dev]
 inherits = "dev"

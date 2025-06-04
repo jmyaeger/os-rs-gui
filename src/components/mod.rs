@@ -3,5 +3,7 @@
 //! component  to be used in our app.
 
 mod equipment_grid;
+mod equipment_select;
 mod equipment_slot;
 pub use equipment_grid::EquipmentGrid;
+pub use equipment_select::EquipmentSelect;
