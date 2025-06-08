@@ -16,6 +16,8 @@ serde_json = "1.0.140"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 log = "0.4.27"
 dioxus-logger = "0.6.2"
+web-sys = "0.3.77"
+wasm-bindgen = "0.2.100"
 
 [features]
 default = ["web"]
