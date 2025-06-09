@@ -9,8 +9,12 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
     let placeholder_image = format!("/assets/placeholders/{slot_type}.png");
 
     let button_class = format!(
-        "equipment-slot-bg flex justify-center items-center h-[48px] w-[48px] {}",
-        if current_item.is_ok() { "cursor-pointer" } else { "cursor-default" }
+        "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] {}",
+        if current_item.is_ok() {
+            "cursor-pointer"
+        } else {
+            "cursor-default"
+        }
     );
 
     let tooltip_content = match current_item {
@@ -19,8 +23,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
     };
 
     rsx! {
-        div { class: "h-[48px] w-[48px] relative",
-            // UserIssueWarning could be added here if needed
+        div { class: "h-[40px] w-[40px] relative",
             button {
                 "type": "button",
                 class: "{button_class}",

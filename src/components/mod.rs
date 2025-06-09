@@ -5,5 +5,8 @@
 mod equipment_grid;
 mod equipment_select;
 mod equipment_slot;
+mod prayers;
+
 pub use equipment_grid::EquipmentGrid;
 pub use equipment_select::EquipmentSelect;
+pub use prayers::PrayerSelect;
