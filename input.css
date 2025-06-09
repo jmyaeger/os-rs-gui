@@ -3,3 +3,7 @@
 body {
     @apply bg-slate-800;
 }
+
+.equipment-slot-bg {
+    background-color: #bfc2c8;
+}

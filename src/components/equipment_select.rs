@@ -141,7 +141,7 @@ pub fn EquipmentSelect() -> Element {
                     input {
                         "type": "text",
                         id: "equipment-select",
-                        class: "w-full p-2.5 rounded bg-dark-400 border-dark-400 text-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500",
+                        class: "w-full p-1 rounded bg-slate-600 border-slate-400 text-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500",
                         placeholder: "Search for equipment...",
                         value: "{search_term}",
                         oninput: move |evt| {

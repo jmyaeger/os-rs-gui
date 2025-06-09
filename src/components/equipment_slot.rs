@@ -9,7 +9,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
     let placeholder_image = format!("/assets/placeholders/{slot_type}.png");
 
     let button_class = format!(
-        "flex justify-center items-center h-[40px] w-[40px] bg-body-100 bg-dark-400 border-dark-400 border border-body-300 transition-colors rounded {}",
+        "flex justify-center items-center h-[40px] w-[40px] bg-slate-600 border-slate-400 border rounded {}",
         if current_item.is_ok() { "cursor-pointer hover:border-red" } else { "" }
     );
 
@@ -23,7 +23,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
             // UserIssueWarning could be added here if needed
             button {
                 "type": "button",
-                class: " {button_class}",
+                class: "{button_class}",
                 title: "{tooltip_content}",
                 onmousedown: move |_| {
                     if current_item.is_ok() {
@@ -34,12 +34,12 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                     match current_item {
                         Ok(ref item) => {
                             if item.as_ref().name() == "Unarmed" {
-                                rsx! { img { class: "opacity-60 filter invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
+                                rsx! { img { class: "opacity-60 filter", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                             } else {
                                 let image_path = item.as_ref().get_image_path();
                                 if image_path.is_empty() {
                                     log::warn!("[GridSlot {:?}] Item '{}' has empty image path. Showing placeholder.", slot_type, item.as_ref().name());
-                                    rsx! { img { class: "opacity-60 filter invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
+                                    rsx! { img { class: "opacity-60 filter", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                                 } else {
                                     let cdn_image = format!("/assets/equipment/{}", item.get_image_path());
                                     rsx! { img { src: "{cdn_image}", alt: "{item.name()}" } }
@@ -48,7 +48,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                             }
                         },
                         Err(_) => {
-                            rsx! { img { class: "opacity-60 filter invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
+                            rsx! { img { class: "opacity-60 filter", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                         }
                     }
                 }

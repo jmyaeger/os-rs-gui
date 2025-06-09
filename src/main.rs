@@ -34,8 +34,9 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
 
         div {
-            class: "px-4 flex",
+            class: "p-4 flex",
             div {
+                class: "border border-slate-300 p-2.5 rounded",
                 div {
                     class: "mt-4",
                     EquipmentGrid {}
