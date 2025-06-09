@@ -34,21 +34,31 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
 
         div {
-            class: "p-4 flex",
+            class: "p-6 flex",
             div {
-                class: "border border-slate-300 p-2.5 rounded",
+                class: "panel p-6 max-w-4xl",
+                h1 {
+                    class: "text-2xl font-bold mb-6 text-accent text-center",
+                    "Loadout"
+                }
                 div {
-                    class: "mt-4",
+                    class: "mt-6",
                     EquipmentGrid {}
-                },
+                }
                 div {
-                    class: "mt-4 flex grow gap-0.5",
+                    class: "mt-6 flex flex-col gap-4",
                     div {
-                        class: "basis-full", EquipmentSelect {}
+                        class: "w-full",
+                        EquipmentSelect {}
                     }
                 }
                 div {
-                    p { class: "text-white", "Strength bonus: {str_bonus}" }
+                    class: "mt-6 p-4 panel-elevated rounded-lg",
+                    p { 
+                        class: "text-lg font-medium",
+                        "Strength Bonus: "
+                        span { class: "text-accent font-bold", "{str_bonus}" }
+                    }
                 }
             }
         }

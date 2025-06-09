@@ -1,9 +1,153 @@
 @import "tailwindcss";
 
-body {
-    @apply bg-slate-800;
+@layer theme {
+  :root {
+    /* Modern Dark Theme - Deep Blues & Grays */
+    --color-dark-bg: #0f1419;          /* Deep dark blue-gray */
+    --color-dark-surface: #1a1f2e;     /* Dark surface */
+    --color-dark-elevated: #242937;    /* Elevated surfaces */
+    --color-dark-border: #2d3748;      /* Subtle borders */
+    --color-dark-border-light: #4a5568; /* Lighter borders */
+    
+    /* Interactive Elements */
+    --color-dark-input: #1e2532;       /* Input backgrounds */
+    --color-dark-input-hover: #252b3b; /* Input hover */
+    --color-dark-button: #2d3748;      /* Button background */
+    --color-dark-button-hover: #4a5568; /* Button hover */
+    --color-dark-button-active: #1a202c; /* Button active */
+    
+    /* Text Colors */
+    --color-dark-text: #f7fafc;        /* Primary text */
+    --color-dark-text-muted: #a0aec0;  /* Muted text */
+    --color-dark-text-subtle: #718096; /* Subtle text */
+    
+    /* Accent Colors */
+    --color-accent-primary: #4299e1;   /* Blue accent */
+    --color-accent-secondary: #38b2ac; /* Teal accent */
+    --color-accent-success: #48bb78;   /* Green */
+    --color-accent-warning: #ed8936;   /* Orange */
+    --color-accent-error: #f56565;     /* Red */
+    
+    /* Equipment Specific */
+    --color-equipment-empty: #1e2532;  /* Empty slots */
+    --color-equipment-hover: #2d3748;  /* Hover state */
+    --color-equipment-border: #4a5568; /* Slot borders */
+    --color-equipment-active: #4299e1; /* Active/selected */
+  }
 }
 
+body {
+    background-color: var(--color-dark-bg);
+    color: var(--color-dark-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Equipment Slots */
 .equipment-slot-bg {
-    background-color: #bfc2c8;
+    background-color: var(--color-equipment-empty);
+    border: 2px solid var(--color-equipment-border);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.equipment-slot-bg:hover {
+    background-color: var(--color-equipment-hover);
+    border-color: var(--color-accent-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.15);
+}
+
+/* Panels & Cards */
+.panel {
+    background-color: var(--color-dark-surface);
+    border: 1px solid var(--color-dark-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.panel-elevated {
+    background-color: var(--color-dark-elevated);
+    border: 1px solid var(--color-dark-border-light);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--color-accent-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #3182ce;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.25);
+}
+
+.btn-secondary {
+    background-color: var(--color-dark-button);
+    color: var(--color-dark-text);
+    border: 1px solid var(--color-dark-border-light);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-dark-button-hover);
+    border-color: var(--color-accent-primary);
+}
+
+/* Input Fields */
+.input {
+    background-color: var(--color-dark-input);
+    border: 2px solid var(--color-dark-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--color-dark-text);
+    transition: all 0.2s ease;
+}
+
+.input:hover {
+    background-color: var(--color-dark-input-hover);
+    border-color: var(--color-dark-border-light);
+}
+
+.input:focus {
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    outline: none;
+}
+
+/* Text Utilities */
+.text-muted {
+    color: var(--color-dark-text-muted);
+}
+
+.text-subtle {
+    color: var(--color-dark-text-subtle);
+}
+
+.text-accent {
+    color: var(--color-accent-primary);
+}
+
+.text-success {
+    color: var(--color-accent-success);
+}
+
+.text-warning {
+    color: var(--color-accent-warning);
+}
+
+.text-error {
+    color: var(--color-accent-error);
 }

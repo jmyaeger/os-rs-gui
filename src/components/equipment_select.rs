@@ -137,11 +137,11 @@ pub fn EquipmentSelect() -> Element {
     match &*items_guard {
         Some(_) => {
             rsx! {
-                div { class: "relative flex-grow",
+                div { class: "relative w-full",
                     input {
                         "type": "text",
                         id: "equipment-select",
-                        class: "w-full p-1 rounded bg-slate-600 border-slate-400 text-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500",
+                        class: "input w-full",
                         placeholder: "Search for equipment...",
                         value: "{search_term}",
                         oninput: move |evt| {
@@ -222,37 +222,44 @@ pub fn EquipmentSelect() -> Element {
 
                     if *show_dropdown.read() && !filtered_options.read().is_empty() {
                         div {
-                            class: "absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto",
-                            ul { class: "py-1",
+                            class: "absolute z-10 w-full mt-2 panel border-2 shadow-lg max-h-60 overflow-y-auto",
+                            ul { class: "py-2",
                                 for (idx, item) in filtered_options.read().iter().enumerate() {
                                     {
                                         let item_clone = item.clone();
                                         let is_highlighted = *highlighted_index.read() == Some(idx);
                                         let item_id = generate_list_item_id(idx);
-                                        let highlight_class = if is_highlighted { "bg-gray-600" } else { "hover:bg-gray-500" };
+                                        let highlight_class = if is_highlighted { 
+                                            "panel-elevated" 
+                                        } else { 
+                                            "hover:panel-elevated transition-all duration-150" 
+                                        };
                                         rsx! {
                                             li {
                                                 id: "{item_id}",
                                                 key: "{item_clone.name}-{item_clone.version.as_deref().unwrap_or(\"novariant\")}",
-                                                class: "flex items-center gap-2 px-3 py-2 cursor-pointer text-sm text-white {highlight_class}",
+                                                class: "flex items-center gap-3 px-4 py-3 cursor-pointer text-sm mx-2 mb-1 rounded-md {highlight_class}",
                                                 onmousedown: move |_| {
                                                     (equip_item)(item_clone.clone());
                                                 },
                                                 onmouseenter: move |_| {
                                                     highlighted_index.set(Some(idx));
                                                 },
-                                                div { class: "flex-shrink-0 h-[20px] w-[20px] flex justify-center items-center",
+                                                div { class: "flex-shrink-0 h-[24px] w-[24px] flex justify-center items-center panel p-1 rounded",
                                                     img {
                                                         class: "max-h-full max-w-full object-contain",
                                                         src: "{image_asset_path(&item.image)}",
                                                         alt: "{item.name}"
                                                     }
                                                 }
-                                                div {
-                                                    "{item.name}"
+                                                div { class: "flex-grow",
+                                                    div { class: "font-medium",
+                                                        "{item.name}"
+                                                    }
                                                     if let Some(version) = &item.version {
-                                                        " "
-                                                        span { class: "text-xs text-gray-400 dark:text-gray-300", "#", "{version}" }
+                                                        div { class: "text-xs text-subtle",
+                                                            "Version: {version}"
+                                                        }
                                                     }
                                                 }
                                             }
@@ -267,7 +274,7 @@ pub fn EquipmentSelect() -> Element {
         }
         None => {
             rsx! {
-                div { class: "text-red-500 p-2.5",
+                div { class: "panel p-4 text-error",
                     "Error: Could not parse embedded equipment data. Check console for details."
                 }
             }
