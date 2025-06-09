@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 dioxus = { version = "0.6.0", features = [] }
 osrs = { path = "../osrs" }
-getrandom = { version = "0.2", features = ["js"] }
 serde = "1.0.219"
 async-std = "1.13.1"
 serde_json = "1.0.140"
@@ -18,6 +17,7 @@ log = "0.4.27"
 dioxus-logger = "0.6.2"
 web-sys = "0.3.77"
 wasm-bindgen = "0.2.100"
+getrandom = { version = "0.3.3", features = ["wasm_js"] }
 
 [features]
 default = ["web"]
