@@ -300,4 +300,5 @@ fn set_skill_base_level(app_state: &mut AppState, skill: Skill, level: u32) {
         Skill::Mining => app_state.player.stats.mining.base = level,
         Skill::Herblore => app_state.player.stats.herblore.base = level,
     }
+    app_state.player.reset_current_stats();
 }
