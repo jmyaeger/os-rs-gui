@@ -20,3 +20,7 @@ script = []
 # Javascript code file
 # serve: [dev-server] only
 script = []
+
+# Proxy configuration for OSRS hiscores API
+[[web.proxy]]
+backend = "https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws"

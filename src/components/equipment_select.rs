@@ -37,8 +37,7 @@ fn scroll_element_into_view(element_id: &str) {
         exec_js(&js_code);
     }
     #[cfg(not(target_arch = "wasm32"))]
-    {
-    }
+    {}
 }
 
 #[component]
@@ -55,14 +54,12 @@ pub fn EquipmentSelect() -> Element {
                     let valid_items: Vec<EquipmentJson> = items
                         .into_iter()
                         .filter(|item| {
-                            item.name != "Unarmed" && (
-                                item.slot != "Weapon" || (
-                                    item.category.is_some() &&
-                                    item.speed.is_some() &&
-                                    item.attack_range.is_some() &&
-                                    item.is_two_handed.is_some()
-                                )
-                            )
+                            item.name != "Unarmed"
+                                && (item.slot != "Weapon"
+                                    || (item.category.is_some()
+                                        && item.speed.is_some()
+                                        && item.attack_range.is_some()
+                                        && item.is_two_handed.is_some()))
                         })
                         .collect();
                     Some(Rc::new(valid_items))
@@ -115,16 +112,28 @@ pub fn EquipmentSelect() -> Element {
     let mut equip_item = move |item: EquipmentJson| {
         let mut state = app_state.write();
         let result = match item.slot.as_str() {
-            "weapon" => item.clone().into_weapon()
+            "weapon" => item
+                .clone()
+                .into_weapon()
                 .map_err(|_| format!("Failed to convert '{}' to weapon", item.name))
-                .and_then(|weapon| state.player.equip_item(Box::new(weapon))
-                    .map_err(|e| format!("Failed to equip weapon: {}", e))),
-            _ => item.clone().into_armor()
+                .and_then(|weapon| {
+                    state
+                        .player
+                        .equip_item(Box::new(weapon))
+                        .map_err(|e| format!("Failed to equip weapon: {}", e))
+                }),
+            _ => item
+                .clone()
+                .into_armor()
                 .map_err(|_| format!("Failed to convert '{}' to armor", item.name))
-                .and_then(|armor| state.player.equip_item(Box::new(armor))
-                    .map_err(|e| format!("Failed to equip armor: {}", e))),
+                .and_then(|armor| {
+                    state
+                        .player
+                        .equip_item(Box::new(armor))
+                        .map_err(|e| format!("Failed to equip armor: {}", e))
+                }),
         };
-        
+
         if let Err(e) = result {
             log::error!("{}", e);
         }
@@ -141,9 +150,10 @@ pub fn EquipmentSelect() -> Element {
                     input {
                         "type": "text",
                         id: "equipment-select",
-                        class: "input w-full",
+                        class: "input w-full h-10",
                         placeholder: "Search for equipment...",
                         value: "{search_term}",
+                        autocomplete: "off",
                         oninput: move |evt| {
                             let new_value = evt.value();
                             search_term.set(new_value.clone());
@@ -229,23 +239,26 @@ pub fn EquipmentSelect() -> Element {
                                         let item_clone = item.clone();
                                         let is_highlighted = *highlighted_index.read() == Some(idx);
                                         let item_id = generate_list_item_id(idx);
-                                        let highlight_class = if is_highlighted { 
-                                            "panel-elevated" 
-                                        } else { 
-                                            "hover:panel-elevated transition-all duration-150" 
+                                        let highlight_class = if is_highlighted {
+                                            "panel-elevated"
+                                        } else {
+                                            "hover:panel-elevated transition-all duration-100"
                                         };
                                         rsx! {
                                             li {
                                                 id: "{item_id}",
                                                 key: "{item_clone.name}-{item_clone.version.as_deref().unwrap_or(\"novariant\")}",
-                                                class: "flex items-center gap-3 px-4 py-3 cursor-pointer text-sm mx-2 mb-1 rounded-md {highlight_class}",
+                                                class: "flex items-center h-10 gap-3 px-4 py-3 cursor-pointer text-sm mx-2 mb-1 rounded-md {highlight_class}",
+                                                style: "outline: none !important; box-shadow: none !important; transition: background-color 0.05s ease, box-shadow 0.05s ease !important;",
+                                                tabindex: "-1",
+                                                onfocus: move |_| {},
                                                 onmousedown: move |_| {
                                                     (equip_item)(item_clone.clone());
                                                 },
                                                 onmouseenter: move |_| {
                                                     highlighted_index.set(Some(idx));
                                                 },
-                                                div { class: "flex-shrink-0 h-[24px] w-[24px] flex justify-center items-center panel p-1 rounded",
+                                                div { class: "flex-shrink-0 h-8 w-8 flex justify-center items-center p-1",
                                                     img {
                                                         class: "max-h-full max-w-full object-contain",
                                                         src: "{image_asset_path(&item.image)}",
@@ -253,7 +266,7 @@ pub fn EquipmentSelect() -> Element {
                                                     }
                                                 }
                                                 div { class: "flex-grow",
-                                                    div { class: "font-medium",
+                                                    div { class: "font-small",
                                                         "{item.name}"
                                                     }
                                                     if let Some(version) = &item.version {

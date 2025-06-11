@@ -43,32 +43,69 @@ const PRAYER_ROWS: [[Prayer; 5]; 5] = [
 #[component]
 pub fn PrayerSelect() -> Element {
     let mut state = use_context::<Signal<AppState>>();
+    let mut is_collapsed = use_signal(|| false);
+
+    let active_prayers: Vec<Prayer> = PRAYER_ROWS
+        .iter()
+        .flatten()
+        .filter(|&prayer| *prayer != Prayer::None && state.read().player.prayers.contains_prayer(*prayer))
+        .copied()
+        .collect();
 
     rsx! {
         div {
-            class: "px-4 mb-8",
-            h2 {
-                class: "text-md font-bold mb-4 text-accent text-center",
-                "Prayers"
-            }
+            // Toggle header
             div {
-                class: "flex flex-col gap-2 items-center",
-                for (row_idx, prayer_row) in PRAYER_ROWS.iter().enumerate() {
-                    div {
-                        key: "prayer-row-{row_idx}",
-                        class: "flex gap-2",
-                        for (col_idx, prayer) in prayer_row.iter().enumerate() {
-                            if *prayer != Prayer::None {
-                                PrayerButton {
-                                    key: "prayer-{row_idx}-{col_idx}",
-                                    prayer: *prayer,
-                                    is_active: state.read().player.prayers.contains_prayer(*prayer),
-                                    on_click: move |prayer: Prayer| {
-                                        let mut app_state = state.write();
-                                        if app_state.player.prayers.contains_prayer(prayer) {
-                                            app_state.player.prayers.remove(prayer);
-                                        } else {
-                                            app_state.player.prayers.add(prayer);
+                class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
+                onclick: move |_| is_collapsed.set(!is_collapsed()),
+                div {
+                    class: "flex items-center gap-4",
+                    h3 {
+                        class: "text-sm font-semibold text-accent w-12",
+                        "Prayers"
+                    }
+                    if !active_prayers.is_empty() && is_collapsed() {
+                        div {
+                            class: "flex gap-2",
+                            for prayer in active_prayers.iter() {
+                                img {
+                                    class: "w-5 h-5 object-contain",
+                                    src: "{get_prayer_img_path(*prayer)}",
+                                    alt: "{prayer}",
+                                    title: "{prayer}"
+                                }
+                            }
+                        }
+                    }
+                }
+                div {
+                    class: "text-xs text-gray-400 transform transition-transform",
+                    class: if is_collapsed() { "" } else { "rotate-180" },
+                    "▼"
+                }
+            }
+            
+            // Expanded prayer grid
+            if !is_collapsed() {
+                div {
+                    class: "flex flex-col gap-2 items-center mt-2",
+                    for (row_idx, prayer_row) in PRAYER_ROWS.iter().enumerate() {
+                        div {
+                            key: "prayer-row-{row_idx}",
+                            class: "flex gap-2",
+                            for (col_idx, prayer) in prayer_row.iter().enumerate() {
+                                if *prayer != Prayer::None {
+                                    PrayerButton {
+                                        key: "prayer-{row_idx}-{col_idx}",
+                                        prayer: *prayer,
+                                        is_active: state.read().player.prayers.contains_prayer(*prayer),
+                                        on_click: move |prayer: Prayer| {
+                                            let mut app_state = state.write();
+                                            if app_state.player.prayers.contains_prayer(prayer) {
+                                                app_state.player.prayers.remove(prayer);
+                                            } else {
+                                                app_state.player.prayers.add(prayer);
+                                            }
                                         }
                                     }
                                 }

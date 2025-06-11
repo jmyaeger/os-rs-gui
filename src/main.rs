@@ -1,6 +1,6 @@
 // The dioxus prelude contains a ton of common items used in dioxus apps. It's a good idea to import wherever you
 // need dioxus
-use components::{EquipmentGrid, EquipmentSelect, PrayerSelect};
+use components::{EquipmentGrid, EquipmentSelect, PotionSelect, PrayerSelect, SkillsSelect};
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
 use state::AppState;
@@ -36,24 +36,32 @@ fn App() -> Element {
         div {
             class: "p-6 flex",
             div {
-                class: "panel p-6 max-w-4xl",
+                class: "panel p-4 max-w-4xl",
                 h1 {
-                    class: "text-2xl font-bold mb-6 text-accent text-center",
+                    class: "text-xl font-bold mb-4 text-accent text-center",
                     "Loadout"
                 }
                 div {
-                    class: "mt-6",
+                    class: "mt-4 items-center",
                     EquipmentGrid {}
                 }
                 div {
                     class: "mt-6 flex flex-col gap-4",
                     div {
-                        class: "w-full",
+                        class: "w-full max-w-md mx-auto",
                         EquipmentSelect {}
                     }
                     div {
-                        class: "w-full",
+                        class: "w-fit mx-auto",
+                        SkillsSelect {}
+                    }
+                    div {
+                        class: "w-full max-w-md mx-auto",
                         PrayerSelect {}
+                    }
+                    div {
+                        class: "w-full max-w-md mx-auto",
+                        PotionSelect {}
                     }
                 }
             }

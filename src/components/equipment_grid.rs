@@ -6,7 +6,7 @@ use osrs::types::equipment::GearSlot;
 pub fn EquipmentGrid() -> Element {
     rsx! {
         div {
-            class: "panel-elevated p-6 inline-block",
+            class: "panel-elevated p-6 w-full mx-auto",
             div {
                 class: "space-y-3",
                 div {
