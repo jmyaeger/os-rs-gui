@@ -87,6 +87,40 @@ pub fn SkillsSelect() -> Element {
     let mut is_loading = use_signal(|| false);
     let mut error_message = use_signal(|| None::<String>);
 
+    let mut perform_lookup = move || {
+        let rsn = rsn_input.read().trim().to_string();
+        if !rsn.is_empty() {
+            is_loading.set(true);
+            let mut state_signal = app_state;
+            spawn(async move {
+                // Clear any previous error
+                error_message.set(None);
+                
+                // Use our web-compatible lookup function
+                let result = {
+                    let mut state = state_signal.write();
+                    lookup_stats_web(&mut *state, &rsn).await
+                };
+                
+                match result {
+                    Ok(()) => {
+                        // Success - stats were updated
+                        rsn_input.set(String::new()); // Clear the input on success
+                    }
+                    Err(e) => {
+                        // Handle the error gracefully
+                        error_message.set(Some(format!("Failed to lookup stats: {}", e)));
+                    }
+                }
+                
+                // Set loading to false after completion
+                is_loading.set(false);
+            });
+        }
+    };
+
+    let lookup_stats = move |_| perform_lookup();
+
     rsx! {
         div {
             class: "min-w-60",
@@ -145,42 +179,25 @@ pub fn SkillsSelect() -> Element {
                                 placeholder: "Enter RSN...",
                                 value: "{rsn_input}",
                                 disabled: is_loading(),
-                                oninput: move |evt| rsn_input.set(evt.value())
+                                oninput: move |evt| rsn_input.set(evt.value()),
+                                onkeydown: move |evt| {
+                                    let rsn = rsn_input.read();
+                                    if rsn.is_empty() {
+                                        return;
+                                    }
+
+                                    match evt.key() {
+                                        Key::Enter => {
+                                            perform_lookup();
+                                        },
+                                        _ => {}
+                                    }
+                                }
                             }
                             button {
                                 class: "flex btn btn-primary text-sm text-center p-0 h-10 min-h-0 w-20 justify-center",
                                 disabled: rsn_input.read().trim().is_empty() || is_loading(),
-                                onclick: move |_| {
-                                    let rsn = rsn_input.read().trim().to_string();
-                                    if !rsn.is_empty() {
-                                        is_loading.set(true);
-                                        let mut state_signal = app_state;
-                                        spawn(async move {
-                                            // Clear any previous error
-                                            error_message.set(None);
-                                            
-                                            // Use our web-compatible lookup function
-                                            let result = {
-                                                let mut state = state_signal.write();
-                                                lookup_stats_web(&mut *state, &rsn).await
-                                            };
-                                            
-                                            match result {
-                                                Ok(()) => {
-                                                    // Success - stats were updated
-                                                    rsn_input.set(String::new()); // Clear the input on success
-                                                }
-                                                Err(e) => {
-                                                    // Handle the error gracefully
-                                                    error_message.set(Some(format!("Failed to lookup stats: {}", e)));
-                                                }
-                                            }
-                                            
-                                            // Set loading to false after completion
-                                            is_loading.set(false);
-                                        });
-                                    }
-                                },
+                                onclick: lookup_stats,
                                 if is_loading() { "Loading..." } else { "Lookup" }
                             }
                         }
