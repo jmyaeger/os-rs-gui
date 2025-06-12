@@ -20,7 +20,7 @@ impl Skill {
     fn name(&self) -> &'static str {
         match self {
             Skill::Attack => "Attack",
-            Skill::Strength => "Strength", 
+            Skill::Strength => "Strength",
             Skill::Defence => "Defence",
             Skill::Ranged => "Ranged",
             Skill::Magic => "Magic",
@@ -33,10 +33,6 @@ impl Skill {
 
     fn icon_path(&self) -> String {
         format!("/assets/bonuses/{}.png", self.name().to_lowercase())
-    }
-
-    fn is_combat_skill(&self) -> bool {
-        matches!(self, Skill::Attack | Skill::Strength | Skill::Defence | Skill::Ranged | Skill::Magic | Skill::Hitpoints)
     }
 }
 
@@ -64,7 +60,10 @@ const COMBAT_SKILLS: [Skill; 6] = [
 // Web-compatible fetch function that uses reqwest with the proxy
 async fn fetch_player_data_web(rsn: &str) -> Result<String, reqwest::Error> {
     // Use absolute URL pointing to the Dioxus dev server
-    let url = format!("http://localhost:8080/m=hiscore_oldschool/index_lite.ws?player={}", rsn);
+    let url = format!(
+        "http://localhost:8080/m=hiscore_oldschool/index_lite.ws?player={}",
+        rsn
+    );
     let client = reqwest::Client::new();
     let response = client.get(&url).send().await?;
     let data = response.text().await?;
@@ -72,16 +71,19 @@ async fn fetch_player_data_web(rsn: &str) -> Result<String, reqwest::Error> {
 }
 
 // Web-compatible lookup function
-async fn lookup_stats_web(app_state: &mut AppState, rsn: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn lookup_stats_web(
+    app_state: &mut Signal<AppState>,
+    rsn: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let stats_data = fetch_player_data_web(rsn).await?;
-    app_state.player.stats = parse_player_data(stats_data);
-    app_state.player.attrs.name = Some(rsn.to_string());
+    app_state.write().player.stats = parse_player_data(stats_data);
+    app_state.write().player.attrs.name = Some(rsn.to_string());
     Ok(())
 }
 
 #[component]
 pub fn SkillsSelect() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let app_state = use_context::<Signal<AppState>>();
     let mut is_collapsed = use_signal(|| false);
     let mut rsn_input = use_signal(String::new);
     let mut is_loading = use_signal(|| false);
@@ -95,13 +97,13 @@ pub fn SkillsSelect() -> Element {
             spawn(async move {
                 // Clear any previous error
                 error_message.set(None);
-                
+
                 // Use our web-compatible lookup function
                 let result = {
-                    let mut state = state_signal.write();
-                    lookup_stats_web(&mut *state, &rsn).await
+                    // let mut state = state_signal.write();
+                    lookup_stats_web(&mut state_signal, &rsn).await
                 };
-                
+
                 match result {
                     Ok(()) => {
                         // Success - stats were updated
@@ -112,7 +114,7 @@ pub fn SkillsSelect() -> Element {
                         error_message.set(Some(format!("Failed to lookup stats: {}", e)));
                     }
                 }
-                
+
                 // Set loading to false after completion
                 is_loading.set(false);
             });
@@ -167,7 +169,7 @@ pub fn SkillsSelect() -> Element {
             if !is_collapsed() {
                 div {
                     class: "mt-2",
-                    
+
                     // RSN Lookup section
                     div {
                         class: "mb-3",
@@ -186,11 +188,8 @@ pub fn SkillsSelect() -> Element {
                                         return;
                                     }
 
-                                    match evt.key() {
-                                        Key::Enter => {
-                                            perform_lookup();
-                                        },
-                                        _ => {}
+                                    if evt.key() == Key::Enter {
+                                        perform_lookup();
                                     }
                                 }
                             }
@@ -201,7 +200,7 @@ pub fn SkillsSelect() -> Element {
                                 if is_loading() { "Loading..." } else { "Lookup" }
                             }
                         }
-                        
+
                         // Error message display
                         if let Some(error) = error_message.read().as_ref() {
                             div {
@@ -229,9 +228,9 @@ pub fn SkillsSelect() -> Element {
 #[component]
 fn SkillIconDisplay(skill: Skill) -> Element {
     let app_state = use_context::<Signal<AppState>>();
-    
+
     let (_base_level, current_level) = get_skill_levels(&app_state.read(), skill);
-    
+
     rsx! {
         div {
             class: "flex items-center gap-1",
@@ -252,9 +251,9 @@ fn SkillIconDisplay(skill: Skill) -> Element {
 #[component]
 fn SkillDisplay(skill: Skill) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
-    
+
     let (base_level, current_level) = get_skill_levels(&app_state.read(), skill);
-    
+
     rsx! {
         div {
             class: "flex items-center justify-center gap-1 p-1 rounded bg-gray-800/50",
@@ -293,15 +292,42 @@ fn SkillDisplay(skill: Skill) -> Element {
 // Helper functions to get and set skill levels
 fn get_skill_levels(app_state: &AppState, skill: Skill) -> (u32, u32) {
     match skill {
-        Skill::Attack => (app_state.player.stats.attack.base, app_state.player.stats.attack.current),
-        Skill::Strength => (app_state.player.stats.strength.base, app_state.player.stats.strength.current),
-        Skill::Defence => (app_state.player.stats.defence.base, app_state.player.stats.defence.current),
-        Skill::Ranged => (app_state.player.stats.ranged.base, app_state.player.stats.ranged.current),
-        Skill::Magic => (app_state.player.stats.magic.base, app_state.player.stats.magic.current),
-        Skill::Hitpoints => (app_state.player.stats.hitpoints.base, app_state.player.stats.hitpoints.current),
-        Skill::Prayer => (app_state.player.stats.prayer.base, app_state.player.stats.prayer.current),
-        Skill::Mining => (app_state.player.stats.mining.base, app_state.player.stats.mining.current),
-        Skill::Herblore => (app_state.player.stats.herblore.base, app_state.player.stats.herblore.current),
+        Skill::Attack => (
+            app_state.player.stats.attack.base,
+            app_state.player.stats.attack.current,
+        ),
+        Skill::Strength => (
+            app_state.player.stats.strength.base,
+            app_state.player.stats.strength.current,
+        ),
+        Skill::Defence => (
+            app_state.player.stats.defence.base,
+            app_state.player.stats.defence.current,
+        ),
+        Skill::Ranged => (
+            app_state.player.stats.ranged.base,
+            app_state.player.stats.ranged.current,
+        ),
+        Skill::Magic => (
+            app_state.player.stats.magic.base,
+            app_state.player.stats.magic.current,
+        ),
+        Skill::Hitpoints => (
+            app_state.player.stats.hitpoints.base,
+            app_state.player.stats.hitpoints.current,
+        ),
+        Skill::Prayer => (
+            app_state.player.stats.prayer.base,
+            app_state.player.stats.prayer.current,
+        ),
+        Skill::Mining => (
+            app_state.player.stats.mining.base,
+            app_state.player.stats.mining.current,
+        ),
+        Skill::Herblore => (
+            app_state.player.stats.herblore.base,
+            app_state.player.stats.herblore.current,
+        ),
     }
 }
 

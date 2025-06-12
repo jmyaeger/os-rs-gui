@@ -92,13 +92,6 @@ pub fn PotionSelect() -> Element {
         highlighted_index.set(None);
     };
 
-    let mut remove_potion = move |potion: Potion| {
-        let mut state = app_state.write();
-        state.player.remove_potion(potion);
-        drop(state); // Release the app_state borrow before updating active_potions
-        active_potions.write().retain(|&p| p != potion);
-    };
-
     rsx! {
         div {
             // Toggle header
@@ -142,7 +135,10 @@ pub fn PotionSelect() -> Element {
                             ActivePotionSlot {
                                 key: "active-potion-{idx}",
                                 potion: *potion,
-                                on_remove: move |potion| remove_potion(potion)
+                                on_remove: move |potion: Potion| {
+                                    app_state.write().player.remove_potion(potion);
+                                    active_potions.write().retain(|&p| p != potion);
+                                }
                             }
                         }
                         // Empty slots

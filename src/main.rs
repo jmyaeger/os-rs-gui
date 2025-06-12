@@ -17,9 +17,6 @@ fn main() {
 fn App() -> Element {
     use_context_provider(|| Signal::new(AppState::default()));
 
-    let app_state = use_context::<Signal<AppState>>();
-    let str_bonus = use_memo(move || app_state.read().player.bonuses.strength.melee);
-
     rsx! {
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
 
