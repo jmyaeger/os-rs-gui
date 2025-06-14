@@ -29,27 +29,12 @@ fn App() -> Element {
                     "Loadout"
                 }
                 div {
-                    class: "mt-4 items-center",
+                    class: "mt-4 flex flex-col gap-4 w-full max-w-md mx-auto",
                     EquipmentGrid {}
-                }
-                div {
-                    class: "mt-6 flex flex-col gap-4",
-                    div {
-                        class: "w-full max-w-md mx-auto",
-                        EquipmentSelect {}
-                    }
-                    div {
-                        class: "w-fit mx-auto",
-                        SkillsSelect {}
-                    }
-                    div {
-                        class: "w-full max-w-md mx-auto",
-                        PrayerSelect {}
-                    }
-                    div {
-                        class: "w-full max-w-md mx-auto",
-                        PotionSelect {}
-                    }
+                    EquipmentSelect {}
+                    SkillsSelect {}
+                    PrayerSelect {}
+                    PotionSelect {}
                 }
             }
         }
