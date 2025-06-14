@@ -10,7 +10,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
 
     let button_class = format!(
         "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] {}",
-        if current_item.is_ok() {
+        if current_item.is_some() {
             "cursor-pointer"
         } else {
             "cursor-default"
@@ -18,8 +18,8 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
     );
 
     let tooltip_content = match current_item {
-        Ok(ref item) => item.name(),
-        Err(_) => "",
+        Some(ref item) => item.name(),
+        None => "",
     };
 
     rsx! {
@@ -29,13 +29,13 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                 class: "{button_class}",
                 title: "{tooltip_content}",
                 onmousedown: move |_| {
-                    if current_item.is_ok() {
+                    if current_item.is_some() {
                         state.write().player.unequip_slot(&slot_type);
                     }
                 },
                 {
                     match current_item {
-                        Ok(ref item) => {
+                        Some(ref item) => {
                             if item.as_ref().name() == "Unarmed" {
                                 rsx! { img { class: "opacity-40 filter grayscale invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                             } else {
@@ -49,7 +49,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                                 }
                             }
                         },
-                        Err(_) => {
+                        None => {
                             rsx! { img { class: "opacity-30 filter grayscale invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                         }
                     }
