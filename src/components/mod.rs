@@ -3,6 +3,7 @@ mod equipment_select;
 mod equipment_slot;
 mod potions;
 mod prayers;
+mod search_bar;
 mod skills;
 
 pub use equipment_grid::EquipmentGrid;

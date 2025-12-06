@@ -38,7 +38,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                         } else {
                             let image_path = item.as_ref().get_image_path();
                             if image_path.is_empty() {
-                                log::warn!("[GridSlot {:?}] Item '{}' has empty image path. Showing placeholder.", slot_type, item_name);
+                                log::warn!("[GridSlot {slot_type:?}] Item '{item_name}' has empty image path. Showing placeholder.");
                                 rsx! { img { class: "opacity-30 filter grayscale invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                             } else {
                                 let cdn_image = format!("/assets/equipment/{}", item.get_image_path());

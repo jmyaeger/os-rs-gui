@@ -45,12 +45,9 @@ pub fn PrayerSelect() -> Element {
     let mut state = use_context::<Signal<AppState>>();
     let mut is_collapsed = use_signal(|| false);
 
-    let active_prayers: Vec<Prayer> = PRAYER_ROWS
-        .iter()
-        .flatten()
-        .filter(|&prayer| *prayer != Prayer::None && state.read().player.prayers.contains_prayer(*prayer))
-        .copied()
-        .collect();
+    // Read state once and collect active prayers
+    let player_prayers = state.read().player.prayers.clone();
+    let is_prayer_active = |prayer: Prayer| player_prayers.contains_prayer(prayer);
 
     rsx! {
         div {
@@ -64,16 +61,30 @@ pub fn PrayerSelect() -> Element {
                         class: "text-sm font-semibold text-accent w-12",
                         "Prayers"
                     }
-                    if !active_prayers.is_empty() && is_collapsed() {
-                        div {
-                            class: "flex gap-2",
-                            for prayer in active_prayers.iter() {
-                                img {
-                                    class: "w-5 h-5 object-contain",
-                                    src: "{get_prayer_img_path(*prayer)}",
-                                    alt: "{prayer}",
-                                    title: "{prayer}"
+                    if is_collapsed() {
+                        {
+                            let active_prayers: Vec<Prayer> = PRAYER_ROWS
+                                .iter()
+                                .flatten()
+                                .filter(|&prayer| *prayer != Prayer::None && is_prayer_active(*prayer))
+                                .copied()
+                                .collect();
+                            if !active_prayers.is_empty() {
+                                rsx! {
+                                    div {
+                                        class: "flex gap-2",
+                                        for prayer in active_prayers.iter() {
+                                            img {
+                                                class: "w-5 h-5 object-contain",
+                                                src: "{get_prayer_img_path(*prayer)}",
+                                                alt: "{prayer}",
+                                                title: "{prayer}"
+                                            }
+                                        }
+                                    }
                                 }
+                            } else {
+                                rsx! {}
                             }
                         }
                     }
@@ -84,7 +95,7 @@ pub fn PrayerSelect() -> Element {
                     "▼"
                 }
             }
-            
+
             // Expanded prayer grid
             if !is_collapsed() {
                 div {
@@ -98,7 +109,7 @@ pub fn PrayerSelect() -> Element {
                                     PrayerButton {
                                         key: "prayer-{row_idx}-{col_idx}",
                                         prayer: *prayer,
-                                        is_active: state.read().player.prayers.contains_prayer(*prayer),
+                                        is_active: is_prayer_active(*prayer),
                                         on_click: move |prayer: Prayer| {
                                             let mut app_state = state.write();
                                             if app_state.player.prayers.contains_prayer(prayer) {
