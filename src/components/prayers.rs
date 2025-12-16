@@ -113,9 +113,9 @@ pub fn PrayerSelect() -> Element {
                                         on_click: move |prayer: Prayer| {
                                             let mut app_state = state.write();
                                             if app_state.player.prayers.contains_prayer(prayer) {
-                                                app_state.player.prayers.remove(prayer);
+                                                app_state.player.remove_prayer(prayer);
                                             } else {
-                                                app_state.player.prayers.add(prayer);
+                                                app_state.player.add_prayer(prayer);
                                             }
                                         }
                                     }
