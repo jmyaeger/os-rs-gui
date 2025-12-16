@@ -129,7 +129,8 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
             }
             Key::Enter => {
                 evt.prevent_default();
-                if let Some(idx) = *highlighted_index.read() {
+                let current_idx = *highlighted_index.read();
+                if let Some(idx) = current_idx {
                     if let Some(item) = current_filtered.get(idx) {
                         handle_select(item.clone());
                     }
@@ -175,36 +176,46 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
                 onkeydown: handle_keyboard
             }
 
-            if *show_dropdown.read() && !filtered_items.read().is_empty() {
-                div {
-                    class: "absolute z-10 w-full mt-2 panel border-2 shadow-lg max-h-60 overflow-y-auto",
-                    ul { class: "py-2",
-                        for (idx, item) in filtered_items.read().iter().enumerate() {
-                            {
-                                let item_clone = item.clone();
-                                let is_highlighted = *highlighted_index.read() == Some(idx);
-                                let item_id = format!("search-item-{idx}");
-                                let highlight_class = if is_highlighted {
-                                    "panel-elevated"
-                                } else {
-                                    "hover:panel-elevated transition-all duration-100"
-                                };
+            {
+                let items_list = filtered_items.read().clone();
+                let current_highlight = *highlighted_index.read();
+                let should_show = *show_dropdown.read() && !items_list.is_empty();
 
-                                rsx! {
-                                    li {
-                                        id: "{item_id}",
-                                        key: "{(props.get_key)(item)}",
-                                        class: "cursor-pointer mx-2 mb-1 rounded-md {highlight_class}",
-                                        style: "outline: none !important; box-shadow: none !important; transition: background-color 0.05s ease !important;",
-                                        tabindex: "-1",
-                                        onmousedown: move |_| handle_select(item_clone.clone()),
-                                        onmouseenter: move |_| highlighted_index.set(Some(idx)),
-                                        {(props.render_item)(item)}
+                if should_show {
+                    rsx! {
+                        div {
+                            class: "absolute z-10 w-full mt-2 panel border-2 shadow-lg max-h-60 overflow-y-auto",
+                            ul { class: "py-2",
+                                for (idx, item) in items_list.iter().enumerate() {
+                                    {
+                                        let item_clone = item.clone();
+                                        let is_highlighted = current_highlight == Some(idx);
+                                        let item_id = format!("search-item-{idx}");
+                                        let highlight_class = if is_highlighted {
+                                            "panel-elevated"
+                                        } else {
+                                            "hover:panel-elevated transition-all duration-100"
+                                        };
+
+                                        rsx! {
+                                            li {
+                                                id: "{item_id}",
+                                                key: "{(props.get_key)(item)}",
+                                                class: "cursor-pointer mx-2 mb-1 rounded-md {highlight_class}",
+                                                style: "outline: none !important; box-shadow: none !important; transition: background-color 0.05s ease !important;",
+                                                tabindex: "-1",
+                                                onmousedown: move |_| handle_select(item_clone.clone()),
+                                                onmouseenter: move |_| highlighted_index.set(Some(idx)),
+                                                {(props.render_item)(item)}
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                } else {
+                    rsx! {}
                 }
             }
         }
