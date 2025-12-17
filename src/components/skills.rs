@@ -1,4 +1,5 @@
 use crate::state::AppState;
+use crate::BONUSES_ASSETS;
 use dioxus::prelude::*;
 use osrs::types::player::parse_player_data;
 
@@ -32,7 +33,7 @@ impl Skill {
     }
 
     fn icon_path(&self) -> String {
-        format!("/assets/bonuses/{}.png", self.name().to_lowercase())
+        format!("{BONUSES_ASSETS}/{}.png", self.name().to_lowercase())
     }
 }
 

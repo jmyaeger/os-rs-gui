@@ -1,5 +1,6 @@
 use crate::components::search_bar::SearchBar;
 use crate::state::AppState;
+use crate::POTIONS_ASSETS;
 use dioxus::prelude::*;
 use osrs::types::potions::Potion;
 use strum::IntoEnumIterator;
@@ -77,7 +78,7 @@ fn get_potion_key(potion: &Potion) -> String {
 
 fn get_potion_img_path(potion: Potion) -> String {
     let potion_name = potion.to_string().replace(" (-)", "").replace(" (+)", "");
-    format!("/assets/potions/{potion_name}.png")
+    format!("{}/{potion_name}.png", POTIONS_ASSETS)
 }
 
 #[component]
@@ -210,7 +211,7 @@ fn EmptyPotionSlot() -> Element {
             class: "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] p-1 opacity-50",
             img {
                 class: "max-h-full max-w-full object-contain opacity-50 filter grayscale",
-                src: "/assets/potions/Vial.png",
+                src: format!("{POTIONS_ASSETS}/Vial.png"),
                 alt: "Empty potion slot"
             }
         }

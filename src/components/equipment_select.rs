@@ -16,7 +16,7 @@ fn filter_equipment(item: &EquipmentJson, term: &str) -> bool {
 }
 
 fn render_equipment_item(item: &EquipmentJson) -> Element {
-    let image_path = format!("/assets/equipment/{}", item.image);
+    let image_path = format!("{}/{}", crate::EQUIPMENT_ASSETS, item.image);
     rsx! {
         div { class: "flex items-center h-10 gap-3 px-4 py-3 text-sm",
             div { class: "flex-shrink-0 h-8 w-8 flex justify-center items-center p-1",

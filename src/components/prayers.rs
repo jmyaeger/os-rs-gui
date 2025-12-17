@@ -1,4 +1,5 @@
 use crate::state::AppState;
+use crate::PRAYERS_ASSETS;
 use dioxus::prelude::*;
 use osrs::types::prayers::Prayer;
 
@@ -151,7 +152,7 @@ fn PrayerButton(prayer: Prayer, is_active: bool, on_click: EventHandler<Prayer>)
             if is_active {
                 img {
                     class: "absolute inset-0 w-full h-full object-contain pointer-events-none opacity-30",
-                    src: "/assets/prayers/selected.png",
+                    src: format!("{PRAYERS_ASSETS}/selected.png"),
                     alt: "Selected"
                 }
             }
@@ -161,7 +162,8 @@ fn PrayerButton(prayer: Prayer, is_active: bool, on_click: EventHandler<Prayer>)
 
 fn get_prayer_img_path(prayer: Prayer) -> String {
     format!(
-        "/assets/prayers/{}.png",
+        "{}/{}.png",
+        PRAYERS_ASSETS,
         prayer.to_string().replace(" ", "_")
     )
 }

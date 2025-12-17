@@ -10,7 +10,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
         Some(ref item) => item.name(),
         None => "",
     };
-    let placeholder_image = format!("/assets/placeholders/{slot_type}.png");
+    let placeholder_image = format!("{}/{slot_type}.png", crate::PLACEHOLDERS_ASSETS);
     let button_class = format!(
         "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] {}",
         if current_item.is_some() {
@@ -41,7 +41,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                                 log::warn!("[GridSlot {slot_type:?}] Item '{item_name}' has empty image path. Showing placeholder.");
                                 rsx! { img { class: "opacity-30 filter grayscale invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
                             } else {
-                                let cdn_image = format!("/assets/equipment/{}", item.get_image_path());
+                                let cdn_image = format!("{}/{}", crate::EQUIPMENT_ASSETS, item.get_image_path());
                                 rsx! { img { src: "{cdn_image}", alt: "{item_name}" } }
                             }
                         }
