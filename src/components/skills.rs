@@ -58,22 +58,25 @@ const COMBAT_SKILLS: [Skill; 6] = [
     Skill::Hitpoints,
 ];
 
-// Web-compatible fetch function that uses reqwest with the proxy
-async fn fetch_player_data_web(rsn: &str) -> Result<String, reqwest::Error> {
-    // Use absolute URL pointing to the Dioxus dev server
-    let url = format!("http://localhost:8080/m=hiscore_oldschool/index_lite.ws?player={rsn}");
+// Server function to fetch player data (runs on server, avoids CORS)
+#[server]
+async fn fetch_player_data_server(rsn: String) -> Result<String, dioxus::prelude::ServerFnError> {
+    let url = "https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws";
+    let params = [("player", rsn.as_str())];
     let client = reqwest::Client::new();
-    let response = client.get(&url).send().await?;
-    let data = response.text().await?;
+    let response = client.get(url).query(&params).send().await
+        .map_err(|e| dioxus::prelude::ServerFnError::new(e.to_string()))?;
+    let data = response.text().await
+        .map_err(|e| dioxus::prelude::ServerFnError::new(e.to_string()))?;
     Ok(data)
 }
 
-// Web-compatible lookup function
-async fn lookup_stats_web(
+// Lookup function using server function
+async fn lookup_stats(
     app_state: &mut Signal<AppState>,
     rsn: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let stats_data = fetch_player_data_web(rsn).await?;
+    let stats_data = fetch_player_data_server(rsn.to_string()).await?;
     let mut state = app_state.write();
     state.player.stats = parse_player_data(stats_data);
     state.player.attrs.name = Some(rsn.to_string());
@@ -100,7 +103,7 @@ pub fn SkillsSelect() -> Element {
                 // Use our web-compatible lookup function
                 let result = {
                     // let mut state = state_signal.write();
-                    lookup_stats_web(&mut state_signal, &rsn).await
+                    lookup_stats(&mut state_signal, &rsn).await
                 };
 
                 match result {
