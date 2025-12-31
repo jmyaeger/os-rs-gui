@@ -56,12 +56,8 @@ pub fn PrayerSelect() -> Element {
             div {
                 class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
                 onclick: move |_| is_collapsed.set(!is_collapsed()),
-                div {
-                    class: "flex items-center gap-4",
-                    h3 {
-                        class: "text-sm font-semibold text-accent w-12",
-                        "Prayers"
-                    }
+                div { class: "flex items-center gap-4",
+                    h3 { class: "text-sm font-semibold text-accent w-12", "Prayers" }
                     if is_collapsed() {
                         {
                             let active_prayers: Vec<Prayer> = PRAYER_ROWS
@@ -72,14 +68,13 @@ pub fn PrayerSelect() -> Element {
                                 .collect();
                             if !active_prayers.is_empty() {
                                 rsx! {
-                                    div {
-                                        class: "flex gap-2",
+                                    div { class: "flex gap-2",
                                         for prayer in active_prayers.iter() {
                                             img {
                                                 class: "w-5 h-5 object-contain",
                                                 src: "{get_prayer_img_path(*prayer)}",
                                                 alt: "{prayer}",
-                                                title: "{prayer}"
+                                                title: "{prayer}",
                                             }
                                         }
                                     }
@@ -99,13 +94,10 @@ pub fn PrayerSelect() -> Element {
 
             // Expanded prayer grid
             if !is_collapsed() {
-                div {
-                    class: "flex flex-col gap-2 items-center mt-2",
-                    for (row_idx, prayer_row) in PRAYER_ROWS.iter().enumerate() {
-                        div {
-                            key: "prayer-row-{row_idx}",
-                            class: "flex gap-2",
-                            for (col_idx, prayer) in prayer_row.iter().enumerate() {
+                div { class: "flex flex-col gap-2 items-center mt-2",
+                    for (row_idx , prayer_row) in PRAYER_ROWS.iter().enumerate() {
+                        div { key: "prayer-row-{row_idx}", class: "flex gap-2",
+                            for (col_idx , prayer) in prayer_row.iter().enumerate() {
                                 if *prayer != Prayer::None {
                                     PrayerButton {
                                         key: "prayer-{row_idx}-{col_idx}",
@@ -118,7 +110,7 @@ pub fn PrayerSelect() -> Element {
                                             } else {
                                                 app_state.player.add_prayer(prayer);
                                             }
-                                        }
+                                        },
                                     }
                                 }
                             }
@@ -147,13 +139,13 @@ fn PrayerButton(prayer: Prayer, is_active: bool, on_click: EventHandler<Prayer>)
             img {
                 class: "p-1 object-contain",
                 src: "{img_path}",
-                alt: "{prayer}"
+                alt: "{prayer}",
             }
             if is_active {
                 img {
                     class: "absolute inset-0 w-full h-full object-contain pointer-events-none opacity-30",
                     src: format!("{PRAYERS_ASSETS}/selected.png"),
-                    alt: "Selected"
+                    alt: "Selected",
                 }
             }
         }

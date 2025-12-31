@@ -58,27 +58,31 @@ const COMBAT_SKILLS: [Skill; 6] = [
     Skill::Hitpoints,
 ];
 
-// Server function to fetch player data (runs on server, avoids CORS)
 #[server]
 async fn fetch_player_data_server(rsn: String) -> Result<String, dioxus::prelude::ServerFnError> {
     let url = "https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws";
     let params = [("player", rsn.as_str())];
     let client = reqwest::Client::new();
-    let response = client.get(url).query(&params).send().await
+    let response = client
+        .get(url)
+        .query(&params)
+        .send()
+        .await
         .map_err(|e| dioxus::prelude::ServerFnError::new(e.to_string()))?;
-    let data = response.text().await
+    let data = response
+        .text()
+        .await
         .map_err(|e| dioxus::prelude::ServerFnError::new(e.to_string()))?;
     Ok(data)
 }
 
-// Lookup function using server function
 async fn lookup_stats(
     app_state: &mut Signal<AppState>,
     rsn: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let stats_data = fetch_player_data_server(rsn.to_string()).await?;
     let mut state = app_state.write();
-    state.player.stats = parse_player_data(stats_data);
+    state.player.stats = parse_player_data(stats_data)?;
     state.player.attrs.name = Some(rsn.to_string());
     Ok(())
 }
@@ -126,35 +130,23 @@ pub fn SkillsSelect() -> Element {
     let lookup_stats = move |_| perform_lookup();
 
     rsx! {
-        div {
-            class: "min-w-60",
+        div { class: "min-w-60",
             // Toggle header
             div {
                 class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
                 onclick: move |_| is_collapsed.set(!is_collapsed()),
-                div {
-                    class: "flex items-center gap-2",
-                    h3 {
-                        class: "text-sm font-semibold text-accent w-12",
-                        "Skills"
-                    }
+                div { class: "flex items-center gap-2",
+                    h3 { class: "text-sm font-semibold text-accent w-12", "Skills" }
                     if is_collapsed() {
-                        div {
-                            class: "flex flex-col gap-2",
-                            div {
-                                class: "flex gap-4 items-center",
+                        div { class: "flex flex-col gap-2",
+                            div { class: "flex gap-4 items-center",
                                 for skill in COMBAT_SKILLS[0..3].iter() {
-                                    SkillIconDisplay {
-                                        skill: *skill
-                                    }
+                                    SkillIconDisplay { skill: *skill }
                                 }
                             }
-                            div {
-                                class: "flex gap-4 items-center",
+                            div { class: "flex gap-4 items-center",
                                 for skill in COMBAT_SKILLS[3..6].iter() {
-                                    SkillIconDisplay {
-                                        skill: *skill
-                                    }
+                                    SkillIconDisplay { skill: *skill }
                                 }
                             }
                         }
@@ -169,14 +161,11 @@ pub fn SkillsSelect() -> Element {
 
             // Expanded skills interface
             if !is_collapsed() {
-                div {
-                    class: "mt-2",
+                div { class: "mt-2",
 
                     // RSN Lookup section
-                    div {
-                        class: "mb-3",
-                        div {
-                            class: "flex items-center gap-2 justify-between",
+                    div { class: "mb-3",
+                        div { class: "flex items-center gap-2 justify-between",
                             input {
                                 "type": "text",
                                 class: "input w-38 h-10 text-sm",
@@ -193,32 +182,32 @@ pub fn SkillsSelect() -> Element {
                                     if evt.key() == Key::Enter {
                                         perform_lookup();
                                     }
-                                }
+                                },
                             }
                             button {
                                 class: "flex btn btn-primary text-sm text-center p-0 h-10 min-h-0 w-20 justify-center",
                                 disabled: rsn_input.read().trim().is_empty() || is_loading(),
                                 onclick: lookup_stats,
-                                if is_loading() { "Loading..." } else { "Lookup" }
+                                if is_loading() {
+                                    "Loading..."
+                                } else {
+                                    "Lookup"
+                                }
                             }
                         }
 
                         // Error message display
                         if let Some(error) = error_message.read().as_ref() {
-                            div {
-                                class: "mt-2 p-2 bg-red-600/20 border border-red-600/30 rounded text-red-300 text-sm",
+                            div { class: "mt-2 p-2 bg-red-600/20 border border-red-600/30 rounded text-red-300 text-sm",
                                 "{error}"
                             }
                         }
                     }
 
                     // All skills grid
-                    div {
-                        class: "grid grid-cols-2 gap-1 mx-auto w-fit",
+                    div { class: "grid grid-cols-2 gap-1 mx-auto w-fit",
                         for skill in ALL_SKILLS.iter() {
-                            SkillDisplay {
-                                skill: *skill
-                            }
+                            SkillDisplay { skill: *skill }
                         }
                     }
                 }
@@ -234,18 +223,14 @@ fn SkillIconDisplay(skill: Skill) -> Element {
     let (_base_level, current_level) = get_skill_levels(&app_state.read(), skill);
 
     rsx! {
-        div {
-            class: "flex items-center gap-1",
+        div { class: "flex items-center gap-1",
             img {
                 class: "w-4 h-4 object-contain",
                 src: "{skill.icon_path()}",
                 alt: "{skill.name()}",
-                title: "{skill.name()}"
+                title: "{skill.name()}",
             }
-            span {
-                class: "text-xs font-medium",
-                "{current_level}"
-            }
+            span { class: "text-xs font-medium", "{current_level}" }
         }
     }
 }
@@ -257,20 +242,15 @@ fn SkillDisplay(skill: Skill) -> Element {
     let (base_level, current_level) = get_skill_levels(&app_state.read(), skill);
 
     rsx! {
-        div {
-            class: "flex items-center justify-center gap-1 p-1 rounded bg-gray-800/50",
+        div { class: "flex items-center justify-center gap-1 p-1 rounded bg-gray-800/50",
             img {
                 class: "w-5 h-5 object-contain flex-shrink-0",
                 src: "{skill.icon_path()}",
                 alt: "{skill.name()}",
-                title: "{skill.name()}"
+                title: "{skill.name()}",
             }
-            div {
-                class: "flex items-center gap-1 text-sm min-w-0",
-                span {
-                    class: "font-bold",
-                    "{current_level}"
-                }
+            div { class: "flex items-center gap-1 text-sm min-w-0",
+                span { class: "font-bold", "{current_level}" }
                 span { "/" }
                 input {
                     "type": "number",
@@ -284,7 +264,7 @@ fn SkillDisplay(skill: Skill) -> Element {
                                 set_skill_base_level(&mut app_state.write(), skill, new_level as u32);
                             }
                         }
-                    }
+                    },
                 }
             }
         }
