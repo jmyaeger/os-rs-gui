@@ -130,10 +130,10 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
             Key::Enter => {
                 evt.prevent_default();
                 let current_idx = *highlighted_index.read();
-                if let Some(idx) = current_idx {
-                    if let Some(item) = current_filtered.get(idx) {
-                        handle_select(item.clone());
-                    }
+                if let Some(idx) = current_idx
+                    && let Some(item) = current_filtered.get(idx)
+                {
+                    handle_select(item.clone());
                 }
             }
             Key::Escape => {
@@ -148,7 +148,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
         div { class: "relative w-full",
             input {
                 "type": "text",
-                class: "input w-full h-10",
+                class: "input-field w-full h-8 px-3 rounded-lg text-sm focus:outline-none",
                 placeholder: "{props.placeholder}",
                 value: "{search_term}",
                 autocomplete: "off",
@@ -173,7 +173,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
                         show_dropdown_signal.set(false);
                     });
                 },
-                onkeydown: handle_keyboard
+                onkeydown: handle_keyboard,
             }
 
             {
@@ -183,18 +183,18 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
 
                 if should_show {
                     rsx! {
-                        div {
-                            class: "absolute z-10 w-full mt-2 panel border-2 shadow-lg max-h-60 overflow-y-auto",
+
+                        div { class: "absolute z-10 w-full mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto",
                             ul { class: "py-2",
-                                for (idx, item) in items_list.iter().enumerate() {
+                                for (idx , item) in items_list.iter().enumerate() {
                                     {
                                         let item_clone = item.clone();
                                         let is_highlighted = current_highlight == Some(idx);
                                         let item_id = format!("search-item-{idx}");
                                         let highlight_class = if is_highlighted {
-                                            "panel-elevated"
+                                            "bg-slate-800"
                                         } else {
-                                            "hover:panel-elevated transition-all duration-100"
+                                            "hover:bg-slate-800 transition-colors duration-100"
                                         };
 
                                         rsx! {
@@ -202,7 +202,6 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
                                                 id: "{item_id}",
                                                 key: "{(props.get_key)(item)}",
                                                 class: "cursor-pointer mx-2 mb-1 rounded-md {highlight_class}",
-                                                style: "outline: none !important; box-shadow: none !important; transition: background-color 0.05s ease !important;",
                                                 tabindex: "-1",
                                                 onmousedown: move |_| handle_select(item_clone.clone()),
                                                 onmouseenter: move |_| highlighted_index.set(Some(idx)),

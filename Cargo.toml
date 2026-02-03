@@ -2,42 +2,59 @@
 name = "os-rs-gui"
 version = "0.1.0"
 authors = ["Jonathan Yaeger <jmyaeger@gmail.com>"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dioxus = { version = "0.7", features = ["fullstack"] }
-osrs = { path = "../osrs" }
-serde = "1.0.219"
-async-std = "1.13.1"
-serde_json = "1.0.140"
-gloo-timers = { version = "0.3.0", features = ["futures"] }
-log = "0.4.27"
-dioxus-logger = "0.6.2"
-web-sys = "0.3.77"
-wasm-bindgen = "0.2.100"
+anyhow = "1"
+console_error_panic_hook = "0.1"
+dioxus = { version = "0.7.3", features = ["router"] }
+dioxus-logger = "0.7.2"
+dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 getrandom = { version = "0.3.3", features = ["wasm_js"] }
+gloo-net = "0.6"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
+js-sys = "0.3"
+log = "0.4.27"
+osrs = { path = "../osrs" }
+plotly = "0.14.0"
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
+serde_json = "1"
 strum = "0.27"
 strum_macros = "0.27"
-reqwest = { version = "0.12", features = ["json"] }
+wasm-bindgen = "0.2"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "console",
+    "DedicatedWorkerGlobalScope",
+    "Document",
+    "Element",
+    "ErrorEvent",
+    "MessageEvent",
+    "Window",
+    "Worker",
+    "WorkerOptions",
+    "WorkerType",
+]
 
 [features]
-default = []
-# The feature that are only required for the web = ["dioxus/web"] build target should be optional and only enabled in the web = ["dioxus/web"] feature
+default = ["web"]
 web = ["dioxus/web"]
-# The feature that are only required for the desktop = ["dioxus/desktop"] build target should be optional and only enabled in the desktop = ["dioxus/desktop"] feature
 desktop = ["dioxus/desktop"]
-# The feature that are only required for the mobile = ["dioxus/mobile"] build target should be optional and only enabled in the mobile = ["dioxus/mobile"] feature
 mobile = ["dioxus/mobile"]
-server = ["dioxus/server"]
 
 [profile.wasm-dev]
 inherits = "dev"
 opt-level = 1
 
-[profile.server-dev]
-inherits = "dev"
-
 [profile.android-dev]
 inherits = "dev"
+
+[profile.web-release]
+inherits = "release"
+debug = 0
+strip = "debuginfo"

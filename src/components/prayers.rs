@@ -1,5 +1,5 @@
-use crate::state::AppState;
 use crate::PRAYERS_ASSETS;
+use crate::state::AppState;
 use dioxus::prelude::*;
 use osrs::types::prayers::Prayer;
 
@@ -57,7 +57,7 @@ pub fn PrayerSelect() -> Element {
                 class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
                 onclick: move |_| is_collapsed.set(!is_collapsed()),
                 div { class: "flex items-center gap-4",
-                    h3 { class: "text-sm font-semibold text-accent w-12", "Prayers" }
+                    h3 { class: "text-sm font-semibold card-title w-12", "Prayers" }
                     if is_collapsed() {
                         {
                             let active_prayers: Vec<Prayer> = PRAYER_ROWS

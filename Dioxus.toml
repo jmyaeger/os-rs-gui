@@ -2,21 +2,11 @@
 asset_dir = "assets"
 
 [web.app]
+title = "RuneSim"
 
-# HTML title tag content
-title = "os-rs-gui"
-
-# include `assets` in web platform
 [web.resource]
-
-# Additional CSS style files
 style = []
-
-# Additional JavaScript files
-script = []
+script = ["https://cdn.plot.ly/plotly-2.35.2.min.js"]
 
 [web.resource.dev]
-
-# Javascript code file
-# serve: [dev-server] only
 script = []

@@ -1,0 +1,179 @@
+/* Jost font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&family=Outfit:wght@100..900&display=swap');
+
+@import "tailwindcss";
+@source "./src/**/*.{rs,html,css}";
+
+/* Plot container styling */
+.plot-container {
+    /* Ensure plotly charts inherit proper sizing */
+    container-type: inline-size;
+}
+
+/* Override plotly's default styling to match our theme */
+.plot-container .js-plotly-plot .plotly {
+    border-radius: 0.5rem;
+}
+
+/* Ensure plot modebar has proper styling on dark background */
+.plot-container .modebar {
+    background: transparent !important;
+}
+
+.plot-container .modebar-btn path {
+    fill: rgba(156, 163, 175, 0.7) !important;
+}
+
+.plot-container .modebar-btn:hover path {
+    fill: rgba(229, 231, 235, 1) !important;
+}
+
+:root {
+  --bg: 15 15 20;
+  --surface: 24 24 32;
+  --surface2: 32 32 42;
+  --border: 60 60 75;
+  --text: 235 235 240;
+  --muted: 140 140 155;
+  --accent: 161 161 170;  /* neutral gray - subtle */
+
+  /* Combat style colors (for gauntlet simulator) */
+  --melee: 239 68 68;     /* red-500 */
+  --melee-glow: 239 68 68;
+  --ranged: 34 197 94;    /* green-500 */
+  --ranged-glow: 34 197 94;
+  --magic: 96 165 250;    /* blue-400 */
+  --magic-glow: 96 165 250;
+
+  /* Status colors */
+  --success: 72 187 120;  /* green */
+  --warning: 237 137 54;  /* orange */
+  --error: 245 101 101;   /* red */
+}
+
+body {
+  font-family: 'Jost', ui-sans-serif, system-ui, sans-serif;
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgb(var(--magic) / 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgb(var(--melee) / 0.03) 0%, transparent 50%);
+}
+
+.card {
+  background: linear-gradient(
+    165deg,
+    rgb(var(--surface)) 0%,
+    rgb(var(--surface2)) 100%
+  );
+  border: 1px solid rgb(var(--border) / 0.4);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.03),
+    0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+.card-title {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: rgb(var(--text) / 0.9);
+}
+
+.card-subtitle { color: rgb(var(--muted) / 0.8); }
+
+.section-title {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: rgb(var(--text) / 0.9);
+}
+
+/* Combat style cards (for gauntlet simulator) */
+.loadout-melee {
+  border-left: 3px solid rgb(var(--melee));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.03),
+    0 8px 24px rgb(0 0 0 / 0.4),
+    -4px 0 20px -8px rgb(var(--melee-glow) / 0.3);
+}
+
+.loadout-ranged {
+  border-left: 3px solid rgb(var(--ranged));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.03),
+    0 8px 24px rgb(0 0 0 / 0.4),
+    -4px 0 20px -8px rgb(var(--ranged-glow) / 0.3);
+}
+
+.loadout-magic {
+  border-left: 3px solid rgb(var(--magic));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.03),
+    0 8px 24px rgb(0 0 0 / 0.4),
+    -4px 0 20px -8px rgb(var(--magic-glow) / 0.3);
+}
+
+/* Style-specific text colors */
+.text-melee { color: rgb(var(--melee)); }
+.text-ranged { color: rgb(var(--ranged)); }
+.text-magic { color: rgb(var(--magic)); }
+
+/* Status text colors */
+.text-muted { color: rgb(var(--muted) / 0.9); }
+.text-success { color: rgb(var(--success)); }
+.text-warning { color: rgb(var(--warning)); }
+.text-error { color: rgb(var(--error)); }
+
+@layer components {
+  .btn-accent {
+    background: rgb(198, 198, 198);
+    color: rgb(var(--bg));
+    font-weight: 500;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 8px rgba(255, 255, 255, 0.15);
+  }
+  .btn-accent:hover {
+    background: rgb(220, 220, 220);
+    box-shadow: 0 1px 12px rgba(255, 255, 255, 0.25);
+  }
+}
+
+/* Input styling */
+.input-field {
+  background: rgb(var(--bg) / 0.6);
+  border: 1px solid rgb(var(--border) / 0.5);
+  transition: all 0.15s ease;
+}
+.input-field:focus {
+  border-color: rgb(var(--accent));
+  box-shadow: 0 0 0 2px rgb(var(--accent) / 0.15);
+}
+.input-invalid {
+    border-width: 2px;
+    border-color: rgb(239 68 68); /* red-500 */
+}
+.input-invalid:focus {
+    border-color: rgb(239 68 68);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.75);
+}
+
+/* Equipment Slots (for DPS calculator) */
+.equipment-slot-bg {
+    background: rgb(var(--surface) / 0.8);
+    border: 2px solid rgb(var(--border) / 0.5);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.equipment-slot-bg:hover {
+    background: rgb(var(--surface2) / 0.9);
+    border-color: rgb(var(--accent) / 0.7);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(var(--accent) / 0.15);
+}
+
+/* Monospace numbers */
+.num { font-family: "Jost", ui-monospace, monospace; font-variant-numeric: tabular-nums; }

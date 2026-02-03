@@ -1,6 +1,8 @@
-use crate::state::AppState;
 use crate::BONUSES_ASSETS;
+use crate::state::AppState;
 use dioxus::prelude::*;
+use gloo_net::http::Request;
+use js_sys::encode_uri_component;
 use osrs::types::player::parse_player_data;
 
 // Define skill types and order
@@ -58,31 +60,40 @@ const COMBAT_SKILLS: [Skill; 6] = [
     Skill::Hitpoints,
 ];
 
-#[server]
-async fn fetch_player_data_server(rsn: String) -> Result<String, dioxus::prelude::ServerFnError> {
-    let url = "https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws";
-    let params = [("player", rsn.as_str())];
-    let client = reqwest::Client::new();
-    let response = client
-        .get(url)
-        .query(&params)
+const HISCORES_API_URL: &str = "https://hiscores-proxy.jmyaeger.workers.dev";
+
+async fn fetch_player_data(rsn: String) -> Result<String, String> {
+    let encoded_rsn = encode_uri_component(&rsn);
+    let url = format!("{}/?player={}", HISCORES_API_URL, encoded_rsn);
+
+    let response = Request::get(&url)
         .send()
         .await
-        .map_err(|e| dioxus::prelude::ServerFnError::new(e.to_string()))?;
+        .map_err(|e| format!("Network error: {e}"))?;
+
+    let status = response.status();
+
+    if status == 404 {
+        return Err(format!("Player not found: {rsn}"));
+    }
+
+    if status != 200 {
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("API request failed ({}): {}", status, error_text));
+    }
+
     let data = response
         .text()
         .await
-        .map_err(|e| dioxus::prelude::ServerFnError::new(e.to_string()))?;
+        .map_err(|e| format!("Failed to read response: {e}"))?;
+
     Ok(data)
 }
 
-async fn lookup_stats(
-    app_state: &mut Signal<AppState>,
-    rsn: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let stats_data = fetch_player_data_server(rsn.to_string()).await?;
+async fn lookup_stats(app_state: &mut Signal<AppState>, rsn: &str) -> Result<(), String> {
+    let stats_data = fetch_player_data(rsn.to_string()).await?;
     let mut state = app_state.write();
-    state.player.stats = parse_player_data(stats_data)?;
+    state.player.stats = parse_player_data(stats_data).map_err(|e| e.to_string())?;
     state.player.attrs.name = Some(rsn.to_string());
     Ok(())
 }
@@ -136,7 +147,7 @@ pub fn SkillsSelect() -> Element {
                 class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
                 onclick: move |_| is_collapsed.set(!is_collapsed()),
                 div { class: "flex items-center gap-2",
-                    h3 { class: "text-sm font-semibold text-accent w-12", "Skills" }
+                    h3 { class: "text-sm font-semibold card-title w-12", "Skills" }
                     if is_collapsed() {
                         div { class: "flex flex-col gap-2",
                             div { class: "flex gap-4 items-center",
@@ -168,7 +179,7 @@ pub fn SkillsSelect() -> Element {
                         div { class: "flex items-center gap-2 justify-between",
                             input {
                                 "type": "text",
-                                class: "input w-38 h-10 text-sm",
+                                class: "input-field w-full h-8 px-3 rounded-lg text-sm focus:outline-none",
                                 placeholder: "Enter RSN...",
                                 value: "{rsn_input}",
                                 disabled: is_loading(),
@@ -185,7 +196,7 @@ pub fn SkillsSelect() -> Element {
                                 },
                             }
                             button {
-                                class: "flex btn btn-primary text-sm text-center p-0 h-10 min-h-0 w-20 justify-center",
+                                class: "h-7 px-3 btn-accent disabled:bg-gray-500 disabled:cursor-not-allowed rounded text-xs shrink-0",
                                 disabled: rsn_input.read().trim().is_empty() || is_loading(),
                                 onclick: lookup_stats,
                                 if is_loading() {
@@ -259,10 +270,8 @@ fn SkillDisplay(skill: Skill) -> Element {
                     max: "99",
                     value: "{base_level}",
                     oninput: move |evt| {
-                        if let Ok(new_level) = evt.value().parse::<u8>() {
-                            if new_level <= 99 {
-                                set_skill_base_level(&mut app_state.write(), skill, new_level as u32);
-                            }
+                        if let Ok(new_level) = evt.value().parse::<u8>() && new_level <= 99 {
+                            set_skill_base_level(&mut app_state.write(), skill, new_level as u32);
                         }
                     },
                 }

@@ -1,6 +1,6 @@
+use crate::POTIONS_ASSETS;
 use crate::components::search_bar::SearchBar;
 use crate::state::AppState;
-use crate::POTIONS_ASSETS;
 use dioxus::prelude::*;
 use osrs::types::potions::Potion;
 use strum::IntoEnumIterator;
@@ -62,12 +62,10 @@ fn render_potion_item(potion: &Potion) -> Element {
                 img {
                     class: "max-h-full max-w-full object-contain",
                     src: "{img_path}",
-                    alt: "{potion}"
+                    alt: "{potion}",
                 }
             }
-            div { class: "flex-grow font-medium",
-                "{potion}"
-            }
+            div { class: "flex-grow font-medium", "{potion}" }
         }
     }
 }
@@ -108,21 +106,16 @@ pub fn PotionSelect() -> Element {
             div {
                 class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
                 onclick: move |_| is_collapsed.set(!is_collapsed()),
-                div {
-                    class: "flex items-center gap-4",
-                    h3 {
-                        class: "text-sm font-semibold text-accent w-12",
-                        "Boosts"
-                    }
+                div { class: "flex items-center gap-4",
+                    h3 { class: "text-sm font-semibold card-title w-12", "Boosts" }
                     if !active_potions.read().is_empty() && is_collapsed() {
-                        div {
-                            class: "flex gap-2",
+                        div { class: "flex gap-2",
                             for potion in active_potions.read().iter() {
                                 img {
                                     class: "w-5 h-5 object-contain",
                                     src: "{get_potion_img_path(*potion)}",
                                     alt: "{potion}",
-                                    title: "{potion}"
+                                    title: "{potion}",
                                 }
                             }
                         }
@@ -137,17 +130,16 @@ pub fn PotionSelect() -> Element {
 
             // Expanded potion interface
             if !is_collapsed() {
-                div {
-                    class: "mt-2",
+                div { class: "mt-2",
                     // Active potion slots
                     div { class: "flex gap-2 justify-center mb-4",
-                        for (idx, potion) in active_potions.read().iter().enumerate() {
+                        for (idx , potion) in active_potions.read().iter().enumerate() {
                             ActivePotionSlot {
                                 key: "active-potion-{idx}",
                                 potion: *potion,
                                 on_remove: move |potion: Potion| {
                                     app_state.write().player.remove_potion(potion);
-                                }
+                                },
                             }
                         }
                         // Empty slots
@@ -182,15 +174,13 @@ pub fn PotionSelect() -> Element {
 #[component]
 fn ActivePotionSlot(potion: Potion, on_remove: EventHandler<Potion>) -> Element {
     rsx! {
-        div {
-            class: "relative group",
-            div {
-                class: "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] p-1",
+        div { class: "relative group",
+            div { class: "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] p-1",
                 img {
                     class: "max-h-full max-w-full object-contain",
                     src: "{get_potion_img_path(potion)}",
                     alt: "{potion}",
-                    title: "{potion}"
+                    title: "{potion}",
                 }
             }
             button {
@@ -207,12 +197,11 @@ fn ActivePotionSlot(potion: Potion, on_remove: EventHandler<Potion>) -> Element 
 #[component]
 fn EmptyPotionSlot() -> Element {
     rsx! {
-        div {
-            class: "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] p-1 opacity-50",
+        div { class: "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] p-1 opacity-50",
             img {
                 class: "max-h-full max-w-full object-contain opacity-50 filter grayscale",
                 src: format!("{POTIONS_ASSETS}/Vial.png"),
-                alt: "Empty potion slot"
+                alt: "Empty potion slot",
             }
         }
     }
