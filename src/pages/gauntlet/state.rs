@@ -27,7 +27,7 @@ impl Default for TwoT3Selections {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct AppState {
     pub player: Player,
     pub melee_switch: Player,

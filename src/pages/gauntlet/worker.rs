@@ -184,9 +184,17 @@ fn run_simulation_inner(
         .map_err(|e| osrs::error::SimulationError::ConfigError(format!("{:?}", e)))?;
 
     player.switches.clear();
-    player.switches.push(GearSwitch::from(&melee_switch));
-    player.switches.push(GearSwitch::from(&ranged_switch));
-    player.switches.push(GearSwitch::from(&magic_switch));
+    player
+        .switches
+        .push(GearSwitch::new(SwitchType::Melee, &melee_switch, &hunllef));
+    player.switches.push(GearSwitch::new(
+        SwitchType::Ranged,
+        &ranged_switch,
+        &hunllef,
+    ));
+    player
+        .switches
+        .push(GearSwitch::new(SwitchType::Magic, &magic_switch, &hunllef));
     let _ = player.switch(&SwitchType::Magic);
 
     // Run simulation

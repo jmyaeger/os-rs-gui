@@ -146,15 +146,11 @@ pub fn LoadoutCard(
 
             let mut state = app_state.write();
             match loadout_number {
-                1 => {
-                    if state.two_t3_selections.loadout1_style != Some(style) {
-                        state.two_t3_selections.loadout1_style = Some(style);
-                    }
+                1 if state.two_t3_selections.loadout1_style != Some(style) => {
+                    state.two_t3_selections.loadout1_style = Some(style);
                 }
-                2 => {
-                    if state.two_t3_selections.loadout2_style != Some(style) {
-                        state.two_t3_selections.loadout2_style = Some(style);
-                    }
+                2 if state.two_t3_selections.loadout2_style != Some(style) => {
+                    state.two_t3_selections.loadout2_style = Some(style);
                 }
                 _ => {}
             }
