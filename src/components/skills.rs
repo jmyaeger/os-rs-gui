@@ -1,9 +1,7 @@
 use crate::BONUSES_ASSETS;
+use crate::hiscores::fetch_player_stats;
 use crate::state::AppState;
 use dioxus::prelude::*;
-use gloo_net::http::Request;
-use js_sys::encode_uri_component;
-use osrs::types::player::parse_player_data;
 
 // Define skill types and order
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -60,40 +58,10 @@ const COMBAT_SKILLS: [Skill; 6] = [
     Skill::Hitpoints,
 ];
 
-const HISCORES_API_URL: &str = "https://hiscores-proxy.jmyaeger.workers.dev";
-
-async fn fetch_player_data(rsn: String) -> Result<String, String> {
-    let encoded_rsn = encode_uri_component(&rsn);
-    let url = format!("{}/?player={}", HISCORES_API_URL, encoded_rsn);
-
-    let response = Request::get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {e}"))?;
-
-    let status = response.status();
-
-    if status == 404 {
-        return Err(format!("Player not found: {rsn}"));
-    }
-
-    if status != 200 {
-        let error_text = response.text().await.unwrap_or_default();
-        return Err(format!("API request failed ({}): {}", status, error_text));
-    }
-
-    let data = response
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read response: {e}"))?;
-
-    Ok(data)
-}
-
 async fn lookup_stats(app_state: &mut Signal<AppState>, rsn: &str) -> Result<(), String> {
-    let stats_data = fetch_player_data(rsn.to_string()).await?;
+    let stats = fetch_player_stats(rsn).await?;
     let mut state = app_state.write();
-    state.player.stats = parse_player_data(stats_data).map_err(|e| e.to_string())?;
+    state.player.stats = stats;
     state.player.attrs.name = Some(rsn.to_string());
     Ok(())
 }

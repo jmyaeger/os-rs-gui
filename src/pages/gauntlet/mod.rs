@@ -12,6 +12,7 @@ use self::state::{AppState, SimulationMode};
 
 pub mod components;
 pub mod simulate;
+pub mod simulation;
 pub mod state;
 pub mod worker;
 
@@ -20,6 +21,10 @@ pub fn Gauntlet() -> Element {
     use_context_provider(|| Signal::new(AppState::default()));
     let app_state = use_context::<Signal<AppState>>();
     let simulation_mode = app_state.read().simulation_mode;
+    let loadout_group_key = match simulation_mode {
+        SimulationMode::TwoT3 => "two-t3",
+        SimulationMode::FiveOne => "five-one",
+    };
 
     rsx! {
         div { class: "w-full max-w-[380px] lg:max-w-7xl mx-auto",
@@ -49,7 +54,9 @@ pub fn Gauntlet() -> Element {
 
                     // Loadouts section
                     div { class: "space-y-3",
-                        div { class: "flex flex-col lg:flex-row gap-4 justify-center items-center min-h-100",
+                        div {
+                            key: "{loadout_group_key}",
+                            class: "flex flex-col lg:flex-row gap-4 justify-center items-center min-h-100",
                             match simulation_mode {
                                 SimulationMode::TwoT3 => rsx! {
                                     LoadoutCard { loadout_number: 1 }

@@ -3,6 +3,7 @@
 let ready = false;
 let wasmHandler = null;
 let queue = [];
+let initError = null;
 
 function enqueue(event) {
   queue.push(event);
@@ -14,10 +15,49 @@ function flushQueue() {
   queue = [];
 }
 
+function requestIdFromEvent(event) {
+  const id = event && event.data && event.data.id;
+  return Number.isFinite(id) ? id : 0;
+}
+
+function postInitErrorForId(id, error) {
+  self.postMessage({
+    id,
+    output: {
+      success: false,
+      stats: null,
+      error,
+    },
+  });
+}
+
+function failQueuedRequests(error) {
+  const queued = queue;
+  queue = [];
+
+  const requestIds = queued
+    .map(requestIdFromEvent)
+    .filter((id) => id !== 0);
+
+  if (requestIds.length === 0) {
+    postInitErrorForId(0, error);
+    return;
+  }
+
+  for (const id of requestIds) {
+    postInitErrorForId(id, error);
+  }
+}
+
 // Normal runtime handler (queue until wasm installs its own handler)
 self.onmessage = (event) => {
-  if (ready && wasmHandler) wasmHandler(event);
-  else enqueue(event);
+  if (initError) {
+    postInitErrorForId(requestIdFromEvent(event), initError);
+  } else if (ready && wasmHandler) {
+    wasmHandler(event);
+  } else {
+    enqueue(event);
+  }
 };
 
 // Heuristically find the best wasm filename mentioned anywhere in the JS bundle.
@@ -66,10 +106,6 @@ async function initWorker(js_url_from_main) {
     ? wasm_rel_or_abs
     : new URL(wasm_rel_or_abs, js_abs_url).href;
 
-  // TEMP LOG (remove later)
-  console.log("Worker init: js_abs_url =", js_abs_url);
-  console.log("Worker init: wasm_abs_url =", wasm_abs_url);
-
   // Now import the module and init wasm explicitly with the resolved URL
   const mod = await import(js_abs_url);
   await mod.default(wasm_abs_url);
@@ -86,6 +122,11 @@ async function initWorker(js_url_from_main) {
 const originalOnMessage = self.onmessage;
 self.onmessage = async (event) => {
   try {
+    if (initError) {
+      postInitErrorForId(requestIdFromEvent(event), initError);
+      return;
+    }
+
     const data = event.data;
 
     if (!ready && data && data.type === "init" && data.js_url) {
@@ -96,14 +137,8 @@ self.onmessage = async (event) => {
 
     enqueue(event);
   } catch (e) {
+    initError = "Worker init failed: " + e.toString();
     console.error("Worker init failed:", e);
-    self.postMessage({
-      id: 0,
-      output: {
-        success: false,
-        stats: null,
-        error: "Worker init failed: " + e.toString(),
-      }
-    });
+    failQueuedRequests(initError);
   }
 };

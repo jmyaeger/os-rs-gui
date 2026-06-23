@@ -2,7 +2,7 @@ use crate::pages::gauntlet::components::loadout::LoadoutStyle;
 use osrs::calc::analysis::SimulationStats;
 use osrs::sims::hunleff::HunllefConfig;
 use osrs::types::equipment::{CombatStyle, Gear};
-use osrs::types::{monster::Monster, player::Player};
+use osrs::types::player::Player;
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum SimulationMode {
@@ -33,7 +33,6 @@ pub struct AppState {
     pub melee_switch: Player,
     pub ranged_switch: Player,
     pub magic_switch: Player,
-    pub hunllef: Monster,
     pub results: Option<SimulationStats>,
     pub simulation_mode: SimulationMode,
     pub two_t3_selections: TwoT3Selections,
@@ -92,7 +91,6 @@ impl Default for AppState {
             melee_switch,
             ranged_switch,
             magic_switch,
-            hunllef: Monster::new("Corrupted Hunllef", None).unwrap(),
             results: None,
             simulation_mode: SimulationMode::default(),
             two_t3_selections: TwoT3Selections::default(),

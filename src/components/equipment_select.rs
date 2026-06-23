@@ -2,8 +2,27 @@ use crate::components::search_bar::SearchBar;
 use crate::state::AppState;
 use dioxus::prelude::*;
 use osrs::types::equipment::EquipmentJson;
+use std::sync::LazyLock;
 
 const EQUIPMENT_JSON_STRING: &str = include_str!("../../assets/json/equipment.json");
+
+static EQUIPMENT_ITEMS: LazyLock<Option<Vec<EquipmentJson>>> = LazyLock::new(|| {
+    serde_json::from_str::<Vec<EquipmentJson>>(EQUIPMENT_JSON_STRING)
+        .ok()
+        .map(|items| {
+            items
+                .into_iter()
+                .filter(|item| {
+                    item.name != "Unarmed"
+                        && (item.slot != "Weapon"
+                            || (item.category.is_some()
+                                && item.speed.is_some()
+                                && item.attack_range.is_some()
+                                && item.is_two_handed.is_some()))
+                })
+                .collect()
+        })
+});
 
 fn filter_equipment(item: &EquipmentJson, term: &str) -> bool {
     item.name.to_lowercase().contains(term)
@@ -52,29 +71,7 @@ fn get_equipment_key(item: &EquipmentJson) -> String {
 pub fn EquipmentSelect() -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
 
-    // Load and parse equipment data once
-    let items = use_signal(|| {
-        match serde_json::from_str::<Vec<EquipmentJson>>(EQUIPMENT_JSON_STRING) {
-            Ok(items) => {
-                let valid_items: Vec<EquipmentJson> = items
-                    .into_iter()
-                    .filter(|item| {
-                        item.name != "Unarmed"
-                            && (item.slot != "Weapon"
-                                || (item.category.is_some()
-                                    && item.speed.is_some()
-                                    && item.attack_range.is_some()
-                                    && item.is_two_handed.is_some()))
-                    })
-                    .collect();
-                Some(valid_items)
-            }
-            Err(_) => None,
-        }
-    });
-
-    let items_read = items.read();
-    match &*items_read {
+    match &*EQUIPMENT_ITEMS {
         Some(equipment_list) => {
             rsx! {
                 SearchBar {

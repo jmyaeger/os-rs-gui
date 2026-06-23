@@ -1,7 +1,10 @@
 use dioxus::html::input_data::keyboard_types::Key;
 use dioxus::prelude::*;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(Props, Clone, PartialEq)]
+static NEXT_SEARCH_BAR_ID: AtomicUsize = AtomicUsize::new(1);
+
+#[derive(Props, Clone)]
 pub struct SearchBarProps<T: Clone + PartialEq + 'static> {
     /// Items to search through
     pub items: Vec<T>,
@@ -24,17 +27,50 @@ pub struct SearchBarProps<T: Clone + PartialEq + 'static> {
     pub disabled: bool,
 }
 
+impl<T: Clone + PartialEq + 'static> PartialEq for SearchBarProps<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.items == other.items
+            && self.on_select == other.on_select
+            && self.placeholder == other.placeholder
+            && self.max_results == other.max_results
+            && self.disabled == other.disabled
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn scroll_to_item(element_id: String) {
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen(inline_js = r#"
+        export function scroll_to_element(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+        }
+    "#)]
+    extern "C" {
+        fn scroll_to_element(id: &str);
+    }
+
+    scroll_to_element(&element_id);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn scroll_to_item(_element_id: String) {}
+
 #[component]
 pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> Element {
     let mut search_term = use_signal(String::new);
     let mut show_dropdown = use_signal(|| false);
     let mut highlighted_index = use_signal(|| None::<usize>);
+    let instance_id = use_signal(|| {
+        NEXT_SEARCH_BAR_ID
+            .fetch_add(1, Ordering::Relaxed)
+            .to_string()
+    });
 
-    // Track props in a signal so the memo can react to changes
-    let mut items_signal = use_signal(|| props.items.clone());
-    if *items_signal.peek() != props.items {
-        items_signal.set(props.items.clone());
-    }
+    let items = props.items.clone();
     let filter_fn = props.filter_fn;
     let max_results = props.max_results;
 
@@ -44,8 +80,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
             return vec![];
         }
 
-        items_signal
-            .read()
+        items
             .iter()
             .filter(|item| (filter_fn)(item, &term))
             .take(max_results)
@@ -69,26 +104,6 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
         }
     });
 
-    let scroll_to_item = |index: usize| {
-        let element_id = format!("search-item-{index}");
-        #[cfg(target_arch = "wasm32")]
-        {
-            use wasm_bindgen::prelude::*;
-            #[wasm_bindgen(inline_js = r#"
-                export function scroll_to_element(id) {
-                    const element = document.getElementById(id);
-                    if (element) {
-                        element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                    }
-                }
-            "#)]
-            extern "C" {
-                fn scroll_to_element(id: &str);
-            }
-            scroll_to_element(&element_id);
-        }
-    };
-
     let mut handle_select = move |item: T| {
         props.on_select.call(item);
         search_term.set(String::new());
@@ -111,7 +126,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
                     None => 0,
                 };
                 highlighted_index.set(Some(next_idx));
-                scroll_to_item(next_idx);
+                scroll_to_item(format!("search-{}-item-{next_idx}", instance_id()));
             }
             Key::ArrowUp => {
                 if current_filtered.is_empty() {
@@ -125,7 +140,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
                     None => current_filtered.len() - 1,
                 };
                 highlighted_index.set(Some(next_idx));
-                scroll_to_item(next_idx);
+                scroll_to_item(format!("search-{}-item-{next_idx}", instance_id()));
             }
             Key::Enter => {
                 evt.prevent_default();
@@ -190,7 +205,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
                                     {
                                         let item_clone = item.clone();
                                         let is_highlighted = current_highlight == Some(idx);
-                                        let item_id = format!("search-item-{idx}");
+                                        let item_id = format!("search-{}-item-{idx}", instance_id());
                                         let highlight_class = if is_highlighted {
                                             "bg-slate-800"
                                         } else {

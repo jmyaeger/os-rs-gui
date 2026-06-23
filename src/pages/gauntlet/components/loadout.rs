@@ -178,7 +178,8 @@ pub fn LoadoutCard(
                             .combat_styles
                             .iter()
                             .find(|(_, s)| s.stance == CombatStance::Aggressive)
-                            .unwrap()
+                            .or_else(|| player.gear.weapon.combat_styles.iter().next())
+                            .expect("equipped melee weapon should have at least one combat style")
                             .0
                     }
                     LoadoutStyle::Ranged => CombatStyle::Rapid,
@@ -287,7 +288,7 @@ pub fn LoadoutCard(
                 if selected_weapon().is_some() {
                     div {
                         label { class: "text-xs text-gray-400", "Attack Style" }
-                        AttackStyleSelect { weapon: selected_weapon }
+                        AttackStyleSelect { style: current_style.unwrap(), weapon: selected_weapon }
                     }
                 }
 

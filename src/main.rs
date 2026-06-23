@@ -5,6 +5,7 @@ use crate::pages::gauntlet::worker::is_worker_context;
 use crate::routes::Route;
 
 mod components;
+mod hiscores;
 mod pages;
 mod routes;
 mod state;

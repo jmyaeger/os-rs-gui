@@ -1,13 +1,6 @@
-use anyhow::Result;
-use gloo_net::http::Request;
-use js_sys::encode_uri_component;
-use osrs::types::stats::{PlayerStats, SpecEnergy, Stat};
-use std::collections::HashMap;
-
+use crate::hiscores::fetch_player_stats;
 use crate::pages::gauntlet::state::AppState;
 use dioxus::prelude::*;
-
-const HISCORES_API_URL: &str = "https://hiscores-proxy.jmyaeger.workers.dev";
 
 #[component]
 pub fn SkillSelect() -> Element {
@@ -146,81 +139,10 @@ const COMBAT_SKILLS: [Skill; 6] = [
     Skill::Hitpoints,
 ];
 
-async fn fetch_player_data(rsn: String) -> Result<String> {
-    let encoded_rsn = encode_uri_component(&rsn);
-    let url = format!("{}/?player={}", HISCORES_API_URL, encoded_rsn);
-
-    let response = Request::get(&url)
-        .send()
-        .await
-        .map_err(|e| anyhow::anyhow!("Network error: {e}"))?;
-
-    let status = response.status();
-
-    if status == 404 {
-        return Err(anyhow::anyhow!("Player not found: {rsn}"));
-    }
-
-    if status != 200 {
-        let error_text = response.text().await.unwrap_or_default();
-        return Err(anyhow::anyhow!(
-            "API request failed ({}): {}",
-            status,
-            error_text
-        ));
-    }
-
-    let data = response
-        .text()
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to read response: {e}"))?;
-
-    Ok(data)
-}
-
-pub fn parse_player_data(data: String) -> Result<PlayerStats> {
-    // Parses player data and creates a PlayerStats struct from it
-    let skills = [
-        "attack",
-        "defence",
-        "strength",
-        "hitpoints",
-        "ranged",
-        "prayer",
-        "magic",
-    ];
-    let data_lines: Vec<&str> = data.lines().collect();
-    let mut skill_map = HashMap::new();
-
-    for (i, skill) in skills.iter().enumerate() {
-        let line_parts: Vec<&str> = data_lines[i + 1].split(',').collect();
-        let level = line_parts[1].parse::<u32>()?;
-        skill_map.insert(*skill, level);
-    }
-
-    let mining_lvl = data_lines[15].split(',').collect::<Vec<&str>>()[1];
-    skill_map.insert("mining", mining_lvl.parse::<u32>()?);
-    let herblore_lvl = data_lines[16].split(',').collect::<Vec<&str>>()[1];
-    skill_map.insert("herblore", herblore_lvl.parse::<u32>()?);
-
-    Ok(PlayerStats {
-        hitpoints: Stat::new(skill_map["hitpoints"], None),
-        attack: Stat::new(skill_map["attack"], None),
-        strength: Stat::new(skill_map["strength"], None),
-        defence: Stat::new(skill_map["defence"], None),
-        ranged: Stat::new(skill_map["ranged"], None),
-        magic: Stat::new(skill_map["magic"], None),
-        prayer: Stat::new(skill_map["prayer"], None),
-        mining: Stat::new(skill_map["mining"], None),
-        herblore: Stat::new(skill_map["herblore"], None),
-        spec: SpecEnergy::default(),
-    })
-}
-
-async fn lookup_stats(app_state: &mut Signal<AppState>, rsn: &str) -> Result<()> {
-    let stats_data = fetch_player_data(rsn.to_string()).await?;
+async fn lookup_stats(app_state: &mut Signal<AppState>, rsn: &str) -> Result<(), String> {
+    let stats = fetch_player_stats(rsn).await?;
     let mut state = app_state.write();
-    state.player.stats = parse_player_data(stats_data)?;
+    state.player.stats = stats;
     state.player.attrs.name = Some(rsn.to_string());
     Ok(())
 }

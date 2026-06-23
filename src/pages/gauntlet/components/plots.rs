@@ -1,9 +1,12 @@
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use dioxus_logger::tracing::error;
 use plotly::Bar;
 use plotly::common::{Font, Label, Line, Mode, Title};
 use plotly::configuration::{Configuration, DisplayModeBar};
 use plotly::layout::{Legend, Margin};
 use plotly::{Layout, Plot, Scatter, layout::Axis};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const FONT_FAMILY: &str = "'Jost', ui-sans-serif, system-ui, sans-serif";
 const AXIS_TITLE_FONT_SIZE: usize = 13;
@@ -29,21 +32,17 @@ const TRACE_COLORS: [&str; 8] = [
     "#fb923c", // orange
 ];
 
+static NEXT_PLOT_ID: AtomicUsize = AtomicUsize::new(1);
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TimeUnit {
     Ticks,
     Seconds,
 }
 
-fn rand_id() -> u32 {
-    #[cfg(target_arch = "wasm32")]
-    {
-        (js_sys::Math::random() * 1_000_000.0) as u32
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        0 // Server-side placeholder
-    }
+fn next_plot_id(prefix: &str) -> String {
+    let id = NEXT_PLOT_ID.fetch_add(1, Ordering::Relaxed);
+    format!("{prefix}-{id}")
 }
 
 #[allow(dead_code)]
@@ -153,11 +152,32 @@ fn create_base_configuration() -> Configuration {
 /// Renders a plot using plotly's wasm bindings
 #[cfg(target_arch = "wasm32")]
 fn render_plot(plot_id: &str, plot: &Plot) {
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(catch, js_namespace = Plotly, js_name = react)]
+        async fn plotly_react(id: &str, obj: &js_sys::Object) -> Result<JsValue, JsValue>;
+    }
+
     let id = plot_id.to_string();
-    let plot = plot.clone();
+    let plot_obj = plot.to_js_object();
 
     spawn(async move {
-        plotly::bindings::react(&id, &plot).await;
+        gloo_timers::future::TimeoutFuture::new(0).await;
+
+        let plot_exists = web_sys::window()
+            .and_then(|window| window.document())
+            .and_then(|document| document.get_element_by_id(&id))
+            .is_some();
+
+        if !plot_exists {
+            return;
+        }
+
+        if let Err(err) = plotly_react(&id, &plot_obj).await {
+            error!("Failed to render plot {id}: {err:?}");
+        }
     });
 }
 
@@ -221,17 +241,15 @@ pub fn TtkCdf(
     time_unit: Signal<TimeUnit>,
     labels: Option<Vec<String>>,
 ) -> Element {
-    let plot_id = use_signal(|| format!("ttk-cdf-{}", rand_id()));
+    let plot_id = use_signal(|| next_plot_id("ttk-cdf"));
 
     #[cfg(target_arch = "wasm32")]
-    use_effect(move || {
+    use_effect(use_reactive!(|distributions, labels| {
         let id = plot_id();
-        let distributions = distributions.clone();
-        let labels = labels.clone();
 
         let plot = create_ttk_cdf(distributions, time_unit(), labels);
         render_plot(&id, &plot);
-    });
+    }));
 
     rsx! {
         div { class: "plot-container w-full",
@@ -292,17 +310,15 @@ pub fn TtkHistogram(
     time_unit: TimeUnit,
     labels: Option<Vec<String>>,
 ) -> Element {
-    let plot_id = use_signal(|| format!("ttk-histogram-{}", rand_id()));
+    let plot_id = use_signal(|| next_plot_id("ttk-histogram"));
 
     #[cfg(target_arch = "wasm32")]
-    use_effect(move || {
+    use_effect(use_reactive!(|distributions, time_unit, labels| {
         let id = plot_id();
-        let distributions = distributions.clone();
-        let labels = labels.clone();
 
         let plot = create_ttk_histogram(distributions, time_unit, labels);
         render_plot(&id, &plot);
-    });
+    }));
 
     rsx! {
         div { class: "plot-container w-full",
@@ -339,16 +355,15 @@ fn create_food_histogram(distribution: Vec<f64>) -> Plot {
 
 #[component]
 pub fn FoodHistogram(distribution: Vec<f64>) -> Element {
-    let plot_id = use_signal(|| format!("food-histogram-{}", rand_id()));
+    let plot_id = use_signal(|| next_plot_id("food-histogram"));
 
     #[cfg(target_arch = "wasm32")]
-    use_effect(move || {
+    use_effect(use_reactive!(|distribution| {
         let id = plot_id();
-        let distribution = distribution.clone();
 
         let plot = create_food_histogram(distribution);
         render_plot(&id, &plot);
-    });
+    }));
 
     rsx! {
         div { class: "plot-container w-full",
