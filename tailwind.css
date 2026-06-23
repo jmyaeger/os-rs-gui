@@ -93,7 +93,7 @@ body {
 
 /* Combat style cards (for gauntlet simulator) */
 .loadout-melee {
-  border-left: 3px solid rgb(var(--melee));
+  border: 2px solid rgb(var(--melee) / 0.5);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.03),
     0 8px 24px rgb(0 0 0 / 0.4),
@@ -101,7 +101,7 @@ body {
 }
 
 .loadout-ranged {
-  border-left: 3px solid rgb(var(--ranged));
+  border: 2px solid rgb(var(--ranged) / 0.5);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.03),
     0 8px 24px rgb(0 0 0 / 0.4),
@@ -109,7 +109,7 @@ body {
 }
 
 .loadout-magic {
-  border-left: 3px solid rgb(var(--magic));
+  border: 2px solid rgb(var(--magic) / 0.5);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.03),
     0 8px 24px rgb(0 0 0 / 0.4),

@@ -232,6 +232,9 @@
   .bottom-full {
     bottom: 100%;
   }
+  .left-1 {
+    left: calc(var(--spacing) * 1);
+  }
   .left-1\/2 {
     left: calc(1/2 * 100%);
   }
@@ -306,6 +309,9 @@
   }
   .inline-flex {
     display: inline-flex;
+  }
+  .table {
+    display: table;
   }
   .aspect-4\/3 {
     aspect-ratio: 4/3;
@@ -433,6 +439,9 @@
   .flex-1 {
     flex: 1;
   }
+  .flex-shrink {
+    flex-shrink: 1;
+  }
   .flex-shrink-0 {
     flex-shrink: 0;
   }
@@ -441,6 +450,13 @@
   }
   .flex-grow {
     flex-grow: 1;
+  }
+  .border-collapse {
+    border-collapse: collapse;
+  }
+  .-translate-x-1 {
+    --tw-translate-x: calc(var(--spacing) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
   }
   .-translate-x-1\/2 {
     --tw-translate-x: calc(calc(1/2 * 100%) * -1);
@@ -463,6 +479,9 @@
   }
   .cursor-pointer {
     cursor: pointer;
+  }
+  .resize {
+    resize: both;
   }
   .\[appearance\:textfield\] {
     appearance: textfield;
@@ -514,6 +533,13 @@
   }
   .gap-6 {
     gap: calc(var(--spacing) * 6);
+  }
+  .space-y-0 {
+    :where(& > :not(:last-child)) {
+      --tw-space-y-reverse: 0;
+      margin-block-start: calc(calc(var(--spacing) * 0) * var(--tw-space-y-reverse));
+      margin-block-end: calc(calc(var(--spacing) * 0) * calc(1 - var(--tw-space-y-reverse)));
+    }
   }
   .space-y-0\.5 {
     :where(& > :not(:last-child)) {
@@ -581,11 +607,17 @@
   .border-gray-700 {
     border-color: var(--color-gray-700);
   }
+  .border-red-500 {
+    border-color: var(--color-red-500);
+  }
   .border-red-500\/30 {
     border-color: color-mix(in srgb, oklch(63.7% 0.237 25.331) 30%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       border-color: color-mix(in oklab, var(--color-red-500) 30%, transparent);
     }
+  }
+  .border-red-600 {
+    border-color: var(--color-red-600);
   }
   .border-red-600\/30 {
     border-color: color-mix(in srgb, oklch(57.7% 0.245 27.325) 30%, transparent);
@@ -619,6 +651,9 @@
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-gray-800) 50%, transparent);
     }
+  }
+  .bg-red-500 {
+    background-color: var(--color-red-500);
   }
   .bg-red-500\/10 {
     background-color: color-mix(in srgb, oklch(63.7% 0.237 25.331) 10%, transparent);
@@ -775,6 +810,9 @@
   .normal-case {
     text-transform: none;
   }
+  .underline {
+    text-decoration-line: underline;
+  }
   .placeholder-gray-400 {
     &::placeholder {
       color: var(--color-gray-400);
@@ -804,6 +842,10 @@
     --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
+  .outline {
+    outline-style: var(--tw-outline-style);
+    outline-width: 1px;
+  }
   .blur {
     --tw-blur: blur(8px);
     filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
@@ -818,6 +860,11 @@
   }
   .filter {
     filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
+  }
+  .transition {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, visibility, content-visibility, overlay, pointer-events;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
   .transition-all {
     transition-property: all;
@@ -1087,15 +1134,15 @@ body {
   color: rgb(var(--text) / 0.9);
 }
 .loadout-melee {
-  border-left: 3px solid rgb(var(--melee));
+  border: 2px solid rgb(var(--melee) / 0.5);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 8px 24px rgb(0 0 0 / 0.4), -4px 0 20px -8px rgb(var(--melee-glow) / 0.3);
 }
 .loadout-ranged {
-  border-left: 3px solid rgb(var(--ranged));
+  border: 2px solid rgb(var(--ranged) / 0.5);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 8px 24px rgb(0 0 0 / 0.4), -4px 0 20px -8px rgb(var(--ranged-glow) / 0.3);
 }
 .loadout-magic {
-  border-left: 3px solid rgb(var(--magic));
+  border: 2px solid rgb(var(--magic) / 0.5);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 8px 24px rgb(0 0 0 / 0.4), -4px 0 20px -8px rgb(var(--magic-glow) / 0.3);
 }
 .text-melee {
@@ -1279,6 +1326,11 @@ body {
   inherits: false;
   initial-value: 0 0 #0000;
 }
+@property --tw-outline-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}
 @property --tw-blur {
   syntax: "*";
   inherits: false;
@@ -1384,6 +1436,7 @@ body {
       --tw-ring-offset-width: 0px;
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
+      --tw-outline-style: solid;
       --tw-blur: initial;
       --tw-brightness: initial;
       --tw-contrast: initial;

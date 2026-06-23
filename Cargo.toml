@@ -9,7 +9,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1"
 console_error_panic_hook = "0.1"
-dioxus = { version = "0.7.3", features = ["router"] }
+dioxus = { version = "0.7.9", features = ["router"] }
 dioxus-logger = "0.7.2"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 getrandom = { version = "0.3.3", features = ["wasm_js"] }
