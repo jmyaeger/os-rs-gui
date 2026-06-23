@@ -3764,6 +3764,7 @@ dependencies = [
 [[package]]
 name = "osrs"
 version = "0.1.0"
+source = "git+https://github.com/jmyaeger/os-rs#4b51bb07557f4881f44714dfadee3450b67e3386"
 dependencies = [
  "approx",
  "chrono",
