@@ -1,7 +1,7 @@
 use crate::components::search_bar::SearchBar;
-use crate::state::AppState;
 use dioxus::prelude::*;
 use osrs::types::equipment::EquipmentJson;
+use osrs::types::player::Player;
 use std::sync::LazyLock;
 
 const EQUIPMENT_JSON_STRING: &str = include_str!("../../assets/json/equipment.json");
@@ -42,17 +42,13 @@ fn render_equipment_item(item: &EquipmentJson) -> Element {
                 img {
                     class: "max-h-full max-w-full object-contain",
                     src: "{image_path}",
-                    alt: "{item.name}"
+                    alt: "{item.name}",
                 }
             }
             div { class: "flex-grow",
-                div { class: "font-small",
-                    "{item.name}"
-                }
+                div { class: "font-small", "{item.name}" }
                 if let Some(version) = &item.version {
-                    div { class: "text-xs text-subtle",
-                        "Version: {version}"
-                    }
+                    div { class: "text-xs text-subtle", "Version: {version}" }
                 }
             }
         }
@@ -69,7 +65,7 @@ fn get_equipment_key(item: &EquipmentJson) -> String {
 
 #[component]
 pub fn EquipmentSelect() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut player = use_context::<Signal<Player>>();
 
     match &*EQUIPMENT_ITEMS {
         Some(equipment_list) => {
@@ -80,14 +76,13 @@ pub fn EquipmentSelect() -> Element {
                     render_item: render_equipment_item,
                     get_key: get_equipment_key,
                     on_select: move |item: EquipmentJson| {
-                        let mut state = app_state.write();
+                        let mut player = player.write();
                         let result = if item.slot.eq_ignore_ascii_case("weapon") {
                             item.clone()
                                 .into_weapon()
                                 .map_err(|_| format!("Failed to convert '{}' to weapon", item.name))
                                 .and_then(|weapon| {
-                                    state
-                                        .player
+                                    player
                                         .equip_item(Box::new(weapon))
                                         .map_err(|e| format!("Failed to equip weapon: {e}"))
                                 })
@@ -96,8 +91,7 @@ pub fn EquipmentSelect() -> Element {
                                 .into_armor()
                                 .map_err(|_| format!("Failed to convert '{}' to armor", item.name))
                                 .and_then(|armor| {
-                                    state
-                                        .player
+                                    player
                                         .equip_item(Box::new(armor))
                                         .map_err(|e| format!("Failed to equip armor: {e}"))
                                 })

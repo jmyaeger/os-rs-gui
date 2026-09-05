@@ -1,7 +1,7 @@
 use super::prayers::PrayerSelect;
 use super::select::Select;
 use crate::pages::gauntlet::components::attack_styles::AttackStyleSelect;
-use crate::pages::gauntlet::state::AppState;
+use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
 use osrs::types::equipment::{CombatStance, CombatStyle, GearSlot};
 
@@ -62,13 +62,13 @@ pub fn LoadoutCard(
     #[props(default)] fixed_style: Option<LoadoutStyle>,
     #[props(default = 1)] loadout_number: u8,
 ) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let state = use_context::<GauntletState>();
 
     // For non-fixed cards, get the current style from shared state
     let current_style = if let Some(style) = fixed_style {
         Some(style)
     } else {
-        let selections = app_state.read().two_t3_selections;
+        let selections = state.two_t3_selections.cloned();
         match loadout_number {
             1 => selections.loadout1_style,
             2 => selections.loadout2_style,
@@ -78,7 +78,7 @@ pub fn LoadoutCard(
 
     // Get the style selected by the other loadout (for filtering)
     let other_loadout_style = if fixed_style.is_none() {
-        let selections = app_state.read().two_t3_selections;
+        let selections = state.two_t3_selections.cloned();
         match loadout_number {
             1 => selections.loadout2_style,
             2 => selections.loadout1_style,
@@ -144,13 +144,13 @@ pub fn LoadoutCard(
             };
             selected_weapon.set(Some(new_default));
 
-            let mut state = app_state.write();
+            let mut selections = state.two_t3_selections;
             match loadout_number {
-                1 if state.two_t3_selections.loadout1_style != Some(style) => {
-                    state.two_t3_selections.loadout1_style = Some(style);
+                1 if selections.peek().loadout1_style != Some(style) => {
+                    selections.write().loadout1_style = Some(style);
                 }
-                2 if state.two_t3_selections.loadout2_style != Some(style) => {
-                    state.two_t3_selections.loadout2_style = Some(style);
+                2 if selections.peek().loadout2_style != Some(style) => {
+                    selections.write().loadout2_style = Some(style);
                 }
                 _ => {}
             }
@@ -159,12 +159,8 @@ pub fn LoadoutCard(
 
     let on_weapon_change = use_callback(move |weapon: String| {
         if let Some(style) = current_style {
-            let mut state = app_state.write();
-            let player = match style {
-                LoadoutStyle::Melee => &mut state.melee_switch,
-                LoadoutStyle::Ranged => &mut state.ranged_switch,
-                LoadoutStyle::Magic => &mut state.magic_switch,
-            };
+            let mut switch = state.switch_signal(style);
+            let mut player = switch.write();
 
             if weapon.trim() == "Unarmed" {
                 player.unequip_slot(&GearSlot::Weapon);
@@ -205,12 +201,13 @@ pub fn LoadoutCard(
 
     // Check if this card is the main style in 5:1 mode
     let is_main_style = fixed_style
-        .map(|style| app_state.read().five_one_main_style == style)
+        .map(|style| state.five_one_main_style.cloned() == style)
         .unwrap_or(false);
 
     let on_main_style_click = move |_| {
         if let Some(style) = fixed_style {
-            app_state.write().five_one_main_style = style;
+            let mut main_style = state.five_one_main_style;
+            main_style.set(style);
         }
     };
 

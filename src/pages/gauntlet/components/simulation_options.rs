@@ -2,17 +2,20 @@ use dioxus::prelude::*;
 use osrs::sims::hunleff::{HunllefEatStrategy, HunllefRedemptionStrat};
 
 use crate::pages::gauntlet::components::select::Select;
-use crate::pages::gauntlet::state::AppState;
+use crate::pages::gauntlet::state::GauntletState;
 
 const INPUT_CLASS: &str = "w-16 h-7 text-sm px-1 input-field rounded text-center text-white num focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 const VALID_BORDER: &str = "";
 
 #[component]
 pub fn SimulationOptions() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let state = use_context::<GauntletState>();
+    let mut sim_config = state.sim_config;
+    let mut num_trials = state.num_trials;
+    let player = state.player;
 
     // Local signals for select components - synced from app state
-    let eat_strategy_label = use_memo(move || match &app_state.read().sim_config.eat_strategy {
+    let eat_strategy_label = use_memo(move || match &sim_config.read().eat_strategy {
         HunllefEatStrategy::EatAtHp(_) => "At HP threshold".to_string(),
         HunllefEatStrategy::TickEatOnly => "Tick eat only".to_string(),
         HunllefEatStrategy::EatToFullDuringNadoes => "Eat during tornadoes".to_string(),
@@ -20,11 +23,10 @@ pub fn SimulationOptions() -> Element {
 
     let eat_strategy_select = use_signal(move || Some(eat_strategy_label()));
 
-    let redemption_enabled =
-        use_memo(move || app_state.read().sim_config.redemption_strategy.is_some());
+    let redemption_enabled = use_memo(move || sim_config.read().redemption_strategy.is_some());
 
     let redemption_label = use_memo(move || {
-        match &app_state.read().sim_config.redemption_strategy {
+        match &sim_config.read().redemption_strategy {
             Some(HunllefRedemptionStrat::BeforeEating(_)) => "Before eating".to_string(),
             Some(HunllefRedemptionStrat::NoFoodLeft(_)) => "No food left".to_string(),
             None => "Before eating".to_string(), // Default for when enabled
@@ -34,24 +36,18 @@ pub fn SimulationOptions() -> Element {
     let mut redemption_select = use_signal(move || Some(redemption_label()));
 
     // Local input signals for validation
-    let mut num_trials_input = use_signal(move || app_state.read().num_trials.to_string());
-    let mut lost_ticks_input =
-        use_signal(move || app_state.read().sim_config.lost_ticks.to_string());
-    let mut food_count_input =
-        use_signal(move || app_state.read().sim_config.food_count.to_string());
-    let mut hp_threshold_input =
-        use_signal(move || match &app_state.read().sim_config.eat_strategy {
-            HunllefEatStrategy::EatAtHp(hp) => hp.to_string(),
-            _ => "50".to_string(),
-        });
-    let mut max_procs_input =
-        use_signal(
-            move || match &app_state.read().sim_config.redemption_strategy {
-                Some(HunllefRedemptionStrat::BeforeEating(n)) => n.to_string(),
-                Some(HunllefRedemptionStrat::NoFoodLeft(n)) => n.to_string(),
-                None => "1".to_string(),
-            },
-        );
+    let mut num_trials_input = use_signal(move || num_trials.peek().to_string());
+    let mut lost_ticks_input = use_signal(move || sim_config.peek().lost_ticks.to_string());
+    let mut food_count_input = use_signal(move || sim_config.peek().food_count.to_string());
+    let mut hp_threshold_input = use_signal(move || match &sim_config.peek().eat_strategy {
+        HunllefEatStrategy::EatAtHp(hp) => hp.to_string(),
+        _ => "50".to_string(),
+    });
+    let mut max_procs_input = use_signal(move || match &sim_config.peek().redemption_strategy {
+        Some(HunllefRedemptionStrat::BeforeEating(n)) => n.to_string(),
+        Some(HunllefRedemptionStrat::NoFoodLeft(n)) => n.to_string(),
+        None => "1".to_string(),
+    });
 
     // Validation states
     let num_trials_valid = use_memo(move || {
@@ -73,7 +69,7 @@ pub fn SimulationOptions() -> Element {
             .unwrap_or(false)
     });
     let hp_threshold_valid = use_memo(move || {
-        let max_hp = app_state.read().player.stats.hitpoints.base;
+        let max_hp = player.read().stats.hitpoints.base;
         hp_threshold_input()
             .parse::<u32>()
             .map(|v| v >= 1 && v <= max_hp)
@@ -85,18 +81,36 @@ pub fn SimulationOptions() -> Element {
             .map(|v| (1..=20).contains(&v))
             .unwrap_or(false)
     });
+    let is_eat_at_hp = use_memo(move || {
+        matches!(sim_config.read().eat_strategy, HunllefEatStrategy::EatAtHp(_))
+    });
+
+    // Combined validity, ignoring inputs that are currently hidden. The
+    // Simulate button is disabled while this is false so a simulation can
+    // never silently run with a stale value from before an invalid edit.
+    let all_valid = use_memo(move || {
+        num_trials_valid()
+            && lost_ticks_valid()
+            && food_count_valid()
+            && (!is_eat_at_hp() || hp_threshold_valid())
+            && (!redemption_enabled() || max_procs_valid())
+    });
+    use_effect(move || {
+        let valid = all_valid();
+        let mut options_valid = state.options_valid;
+        if *options_valid.peek() != valid {
+            options_valid.set(valid);
+        }
+    });
 
     // Get current values for display
-    let max_hp = app_state.read().player.stats.hitpoints.base;
-    let redemption_max_procs = match &app_state.read().sim_config.redemption_strategy {
+    let max_hp = player.read().stats.hitpoints.base;
+    let redemption_max_procs = match &sim_config.read().redemption_strategy {
         Some(HunllefRedemptionStrat::BeforeEating(n)) => *n,
         Some(HunllefRedemptionStrat::NoFoodLeft(n)) => *n,
         None => 1,
     };
-    let is_eat_at_hp = matches!(
-        app_state.read().sim_config.eat_strategy,
-        HunllefEatStrategy::EatAtHp(_)
-    );
+    let is_eat_at_hp = is_eat_at_hp();
 
     // Compute input classes based on validation
     let num_trials_class = format!(
@@ -155,7 +169,7 @@ pub fn SimulationOptions() -> Element {
                         let val = e.value();
                         num_trials_input.set(val.clone());
                         if let Ok(v) = val.parse::<u32>() && (1..=100_000).contains(&v) {
-                            app_state.write().num_trials = v;
+                            num_trials.set(v);
                         }
                     },
                 }
@@ -174,7 +188,7 @@ pub fn SimulationOptions() -> Element {
                         let val = e.value();
                         lost_ticks_input.set(val.clone());
                         if let Ok(v) = val.parse::<i32>() && (0..=1000).contains(&v) {
-                            app_state.write().sim_config.lost_ticks = v;
+                            sim_config.write().lost_ticks = v;
                         }
                     },
                 }
@@ -193,7 +207,7 @@ pub fn SimulationOptions() -> Element {
                         let val = e.value();
                         food_count_input.set(val.clone());
                         if let Ok(v) = val.parse::<u32>() && v <= 27 {
-                            app_state.write().sim_config.food_count = v;
+                            sim_config.write().food_count = v;
                         }
                     },
                 }
@@ -222,7 +236,7 @@ pub fn SimulationOptions() -> Element {
                                 "Eat during tornadoes" => HunllefEatStrategy::EatToFullDuringNadoes,
                                 _ => return,
                             };
-                            app_state.write().sim_config.eat_strategy = new_strategy;
+                            sim_config.write().eat_strategy = new_strategy;
                         },
                     }
                 }
@@ -241,9 +255,9 @@ pub fn SimulationOptions() -> Element {
                             let val = e.value();
                             hp_threshold_input.set(val.clone());
                             if let Ok(v) = val.parse::<u32>() {
-                                let max = app_state.read().player.stats.hitpoints.base;
+                                let max = player.peek().stats.hitpoints.base;
                                 if v >= 1 && v <= max {
-                                    app_state.write().sim_config.eat_strategy = HunllefEatStrategy::EatAtHp(
+                                    sim_config.write().eat_strategy = HunllefEatStrategy::EatAtHp(
                                         v,
                                     );
                                 }
@@ -263,12 +277,12 @@ pub fn SimulationOptions() -> Element {
                     onchange: move |e| {
                         if e.checked() {
                             // Enable with default: BeforeEating(1)
-                            app_state.write().sim_config.redemption_strategy = Some(
+                            sim_config.write().redemption_strategy = Some(
                                 HunllefRedemptionStrat::BeforeEating(1),
                             );
                             redemption_select.set(Some("Before eating".to_string()));
                         } else {
-                            app_state.write().sim_config.redemption_strategy = None;
+                            sim_config.write().redemption_strategy = None;
                         }
                     },
                 }
@@ -287,7 +301,7 @@ pub fn SimulationOptions() -> Element {
                                     "No food left" => HunllefRedemptionStrat::NoFoodLeft(redemption_max_procs),
                                     _ => return,
                                 };
-                                app_state.write().sim_config.redemption_strategy = Some(new_strategy);
+                                sim_config.write().redemption_strategy = Some(new_strategy);
                             },
                         }
                     }
@@ -304,11 +318,8 @@ pub fn SimulationOptions() -> Element {
                             let val = e.value();
                             max_procs_input.set(val.clone());
                             if let Ok(v) = val.parse::<u32>() && (1..=20).contains(&v) {
-                                let mut state = app_state.write();
-                                state.sim_config.redemption_strategy = match &state
-                                    .sim_config
-                                    .redemption_strategy
-                                {
+                                let mut config = sim_config.write();
+                                config.redemption_strategy = match &config.redemption_strategy {
                                     Some(HunllefRedemptionStrat::BeforeEating(_)) => {
                                         Some(HunllefRedemptionStrat::BeforeEating(v))
                                     }

@@ -1,18 +1,21 @@
 use crate::pages::gauntlet::components::plots::{FoodHistogram, TimeUnit, TtkCdf};
 use crate::pages::gauntlet::simulation::build_simulation_input;
-use crate::pages::gauntlet::state::AppState;
+use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::{error, info};
 
 #[component]
 fn SimulateButton(mut simulate: Action<(), ()>) -> Element {
+    let state = use_context::<GauntletState>();
     let is_pending = simulate.pending();
+    let options_valid = state.options_valid.cloned();
 
     rsx! {
         div { class: "flex justify-center",
             button {
                 class: "inline-flex items-center gap-2 px-5 py-2.5 rounded-lg btn-accent disabled:bg-gray-600 disabled:cursor-not-allowed",
-                disabled: is_pending,
+                disabled: is_pending || !options_valid,
+                title: if !options_valid { "Fix the highlighted options before simulating" },
                 onclick: move |_| {
                     info!("Simulate button clicked");
                     simulate.call();
@@ -70,12 +73,9 @@ fn SectionTitle(text: String) -> Element {
 
 #[component]
 pub fn SimulationResults() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let state = use_context::<GauntletState>();
     let simulate = use_action(move || async move {
-        let input = {
-            let state = app_state.read();
-            build_simulation_input(&state)
-        };
+        let input = build_simulation_input(&state.snapshot());
 
         let output = crate::pages::gauntlet::worker::run_simulation(input)
             .await
@@ -85,7 +85,8 @@ pub fn SimulationResults() -> Element {
             let stats = output
                 .stats
                 .ok_or_else(|| anyhow::anyhow!("Simulation completed without stats"))?;
-            app_state.write().results = Some(stats);
+            let mut results = state.results;
+            results.set(Some(stats));
             info!("Simulation completed successfully");
             Ok(())
         } else {
@@ -111,7 +112,7 @@ pub fn SimulationResults() -> Element {
                 }
             }
 
-            if let Some(results) = app_state.read().results.clone() {
+            if let Some(results) = state.results.read().clone() {
 
                 // Summary chips
                 {

@@ -1,5 +1,5 @@
 use crate::pages::gauntlet::components::loadout::LoadoutStyle;
-use crate::pages::gauntlet::state::{AppState, SimulationMode};
+use crate::pages::gauntlet::state::{SimulationMode, SimulationParams};
 use osrs::calc::analysis::SimulationStats;
 use osrs::calc::rolls::calc_active_player_rolls;
 use osrs::combat::simulation::simulate_n_fights;
@@ -76,7 +76,7 @@ fn to_switch_type(style: LoadoutStyle) -> SwitchType {
     }
 }
 
-pub fn build_simulation_input(state: &AppState) -> SimulationInput {
+pub fn build_simulation_input(state: &SimulationParams) -> SimulationInput {
     let attack_strategy = match state.simulation_mode {
         SimulationMode::TwoT3 => {
             let styles = state.two_t3_selections;
@@ -109,7 +109,7 @@ pub fn build_simulation_input(state: &AppState) -> SimulationInput {
     sim_config.attack_strategy = attack_strategy;
 
     SimulationInput {
-        player_stats: state.player.stats,
+        player_stats: state.player_stats,
         melee_weapon: state.melee_switch.gear.weapon.name.clone(),
         melee_style: state.melee_switch.attrs.active_style,
         melee_prayers: collect_active_prayers(&state.melee_switch),
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn build_input_uses_selected_attack_style() {
-        let mut state = AppState::default();
+        let mut state = SimulationParams::default();
         state.melee_switch.set_active_style(CombatStyle::Jab);
 
         let input = build_simulation_input(&state);
@@ -287,8 +287,10 @@ mod tests {
 
     #[test]
     fn default_high_trial_simulation_completes() {
-        let mut state = AppState::default();
-        state.num_trials = 100_000;
+        let state = SimulationParams {
+            num_trials: 100_000,
+            ..Default::default()
+        };
 
         let output = run_simulation_from_input(build_simulation_input(&state));
 

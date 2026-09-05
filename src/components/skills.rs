@@ -1,7 +1,7 @@
 use crate::BONUSES_ASSETS;
 use crate::hiscores::fetch_player_stats;
-use crate::state::AppState;
 use dioxus::prelude::*;
+use osrs::types::player::Player;
 
 // Define skill types and order
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -58,17 +58,17 @@ const COMBAT_SKILLS: [Skill; 6] = [
     Skill::Hitpoints,
 ];
 
-async fn lookup_stats(app_state: &mut Signal<AppState>, rsn: &str) -> Result<(), String> {
+async fn lookup_stats(player: &mut Signal<Player>, rsn: &str) -> Result<(), String> {
     let stats = fetch_player_stats(rsn).await?;
-    let mut state = app_state.write();
-    state.player.stats = stats;
-    state.player.attrs.name = Some(rsn.to_string());
+    let mut player = player.write();
+    player.stats = stats;
+    player.attrs.name = Some(rsn.to_string());
     Ok(())
 }
 
 #[component]
 pub fn SkillsSelect() -> Element {
-    let app_state = use_context::<Signal<AppState>>();
+    let player = use_context::<Signal<Player>>();
     let mut is_collapsed = use_signal(|| false);
     let mut rsn_input = use_signal(String::new);
     let mut is_loading = use_signal(|| false);
@@ -78,16 +78,13 @@ pub fn SkillsSelect() -> Element {
         let rsn = rsn_input.read().trim().to_string();
         if !rsn.is_empty() {
             is_loading.set(true);
-            let mut state_signal = app_state;
+            let mut player_signal = player;
             spawn(async move {
                 // Clear any previous error
                 error_message.set(None);
 
                 // Use our web-compatible lookup function
-                let result = {
-                    // let mut state = state_signal.write();
-                    lookup_stats(&mut state_signal, &rsn).await
-                };
+                let result = lookup_stats(&mut player_signal, &rsn).await;
 
                 match result {
                     Ok(()) => {
@@ -197,9 +194,9 @@ pub fn SkillsSelect() -> Element {
 
 #[component]
 fn SkillIconDisplay(skill: Skill) -> Element {
-    let app_state = use_context::<Signal<AppState>>();
+    let player = use_context::<Signal<Player>>();
 
-    let (_base_level, current_level) = get_skill_levels(&app_state.read(), skill);
+    let (_base_level, current_level) = get_skill_levels(&player.read(), skill);
 
     rsx! {
         div { class: "flex items-center gap-1",
@@ -216,9 +213,9 @@ fn SkillIconDisplay(skill: Skill) -> Element {
 
 #[component]
 fn SkillDisplay(skill: Skill) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut player = use_context::<Signal<Player>>();
 
-    let (base_level, current_level) = get_skill_levels(&app_state.read(), skill);
+    let (base_level, current_level) = get_skill_levels(&player.read(), skill);
 
     rsx! {
         div { class: "flex items-center justify-center gap-1 p-1 rounded bg-gray-800/50",
@@ -239,7 +236,7 @@ fn SkillDisplay(skill: Skill) -> Element {
                     value: "{base_level}",
                     oninput: move |evt| {
                         if let Ok(new_level) = evt.value().parse::<u8>() && new_level <= 99 {
-                            set_skill_base_level(&mut app_state.write(), skill, new_level as u32);
+                            set_skill_base_level(&mut player.write(), skill, new_level as u32);
                         }
                     },
                 }
@@ -249,58 +246,31 @@ fn SkillDisplay(skill: Skill) -> Element {
 }
 
 // Helper functions to get and set skill levels
-fn get_skill_levels(app_state: &AppState, skill: Skill) -> (u32, u32) {
+fn get_skill_levels(player: &Player, skill: Skill) -> (u32, u32) {
     match skill {
-        Skill::Attack => (
-            app_state.player.stats.attack.base,
-            app_state.player.stats.attack.current,
-        ),
-        Skill::Strength => (
-            app_state.player.stats.strength.base,
-            app_state.player.stats.strength.current,
-        ),
-        Skill::Defence => (
-            app_state.player.stats.defence.base,
-            app_state.player.stats.defence.current,
-        ),
-        Skill::Ranged => (
-            app_state.player.stats.ranged.base,
-            app_state.player.stats.ranged.current,
-        ),
-        Skill::Magic => (
-            app_state.player.stats.magic.base,
-            app_state.player.stats.magic.current,
-        ),
-        Skill::Hitpoints => (
-            app_state.player.stats.hitpoints.base,
-            app_state.player.stats.hitpoints.current,
-        ),
-        Skill::Prayer => (
-            app_state.player.stats.prayer.base,
-            app_state.player.stats.prayer.current,
-        ),
-        Skill::Mining => (
-            app_state.player.stats.mining.base,
-            app_state.player.stats.mining.current,
-        ),
-        Skill::Herblore => (
-            app_state.player.stats.herblore.base,
-            app_state.player.stats.herblore.current,
-        ),
+        Skill::Attack => (player.stats.attack.base, player.stats.attack.current),
+        Skill::Strength => (player.stats.strength.base, player.stats.strength.current),
+        Skill::Defence => (player.stats.defence.base, player.stats.defence.current),
+        Skill::Ranged => (player.stats.ranged.base, player.stats.ranged.current),
+        Skill::Magic => (player.stats.magic.base, player.stats.magic.current),
+        Skill::Hitpoints => (player.stats.hitpoints.base, player.stats.hitpoints.current),
+        Skill::Prayer => (player.stats.prayer.base, player.stats.prayer.current),
+        Skill::Mining => (player.stats.mining.base, player.stats.mining.current),
+        Skill::Herblore => (player.stats.herblore.base, player.stats.herblore.current),
     }
 }
 
-fn set_skill_base_level(app_state: &mut AppState, skill: Skill, level: u32) {
+fn set_skill_base_level(player: &mut Player, skill: Skill, level: u32) {
     match skill {
-        Skill::Attack => app_state.player.stats.attack.base = level,
-        Skill::Strength => app_state.player.stats.strength.base = level,
-        Skill::Defence => app_state.player.stats.defence.base = level,
-        Skill::Ranged => app_state.player.stats.ranged.base = level,
-        Skill::Magic => app_state.player.stats.magic.base = level,
-        Skill::Hitpoints => app_state.player.stats.hitpoints.base = level,
-        Skill::Prayer => app_state.player.stats.prayer.base = level,
-        Skill::Mining => app_state.player.stats.mining.base = level,
-        Skill::Herblore => app_state.player.stats.herblore.base = level,
+        Skill::Attack => player.stats.attack.base = level,
+        Skill::Strength => player.stats.strength.base = level,
+        Skill::Defence => player.stats.defence.base = level,
+        Skill::Ranged => player.stats.ranged.base = level,
+        Skill::Magic => player.stats.magic.base = level,
+        Skill::Hitpoints => player.stats.hitpoints.base = level,
+        Skill::Prayer => player.stats.prayer.base = level,
+        Skill::Mining => player.stats.mining.base = level,
+        Skill::Herblore => player.stats.herblore.base = level,
     }
-    app_state.player.reset_current_stats(true);
+    player.reset_current_stats(true);
 }

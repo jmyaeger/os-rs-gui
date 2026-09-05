@@ -8,7 +8,6 @@ mod components;
 mod hiscores;
 mod pages;
 mod routes;
-mod state;
 
 // Asset folders - these must be declared with asset!() to be included in the build
 pub const EQUIPMENT_ASSETS: Asset = asset!("/assets/equipment");

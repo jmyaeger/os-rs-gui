@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
+use osrs::types::player::Player;
 
-use crate::pages::{gauntlet::Gauntlet, home::Home};
+use crate::pages::{gauntlet::Gauntlet, gauntlet::state::GauntletState, home::Home};
 
 const RUNESIM_LOGO: Asset = asset!("/assets/runesim_logo.png");
 
@@ -15,6 +16,11 @@ pub enum Route {
 
 #[component]
 fn Layout() -> Element {
+    // Page state lives here (not in the page components) so it survives
+    // navigating between pages.
+    use_context_provider(|| Signal::new(Player::default()));
+    use_context_provider(GauntletState::new);
+
     let route = use_route::<Route>();
     let page_title = match route {
         Route::Home {} => "DPS Calculator",

@@ -1,6 +1,6 @@
 use crate::PRAYERS_ASSETS;
-use crate::state::AppState;
 use dioxus::prelude::*;
+use osrs::types::player::Player;
 use osrs::types::prayers::Prayer;
 
 const PRAYER_ROWS: [[Prayer; 5]; 5] = [
@@ -43,11 +43,11 @@ const PRAYER_ROWS: [[Prayer; 5]; 5] = [
 
 #[component]
 pub fn PrayerSelect() -> Element {
-    let mut state = use_context::<Signal<AppState>>();
+    let mut player = use_context::<Signal<Player>>();
     let mut is_collapsed = use_signal(|| false);
 
     // Read state once and collect active prayers
-    let player_prayers = state.read().player.prayers.clone();
+    let player_prayers = player.read().prayers.clone();
     let is_prayer_active = |prayer: Prayer| player_prayers.contains_prayer(prayer);
 
     rsx! {
@@ -104,11 +104,11 @@ pub fn PrayerSelect() -> Element {
                                         prayer: *prayer,
                                         is_active: is_prayer_active(*prayer),
                                         on_click: move |prayer: Prayer| {
-                                            let mut app_state = state.write();
-                                            if app_state.player.prayers.contains_prayer(prayer) {
-                                                app_state.player.remove_prayer(prayer);
+                                            let mut player = player.write();
+                                            if player.prayers.contains_prayer(prayer) {
+                                                player.remove_prayer(prayer);
                                             } else {
-                                                app_state.player.add_prayer(prayer);
+                                                player.add_prayer(prayer);
                                             }
                                         },
                                     }

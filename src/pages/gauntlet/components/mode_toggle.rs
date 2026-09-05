@@ -1,10 +1,10 @@
-use crate::pages::gauntlet::state::{AppState, SimulationMode};
+use crate::pages::gauntlet::state::{GauntletState, SimulationMode};
 use dioxus::prelude::*;
 
 #[component]
 pub fn ModeToggle() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
-    let current_mode = app_state.read().simulation_mode;
+    let mut mode = use_context::<GauntletState>().simulation_mode;
+    let current_mode = mode.cloned();
 
     let button_base = "px-5 py-2 text-sm font-medium transition-all duration-150";
     let active = "btn-accent";
@@ -28,14 +28,14 @@ pub fn ModeToggle() -> Element {
                 button {
                     class: "{two_t3_class}",
                     onclick: move |_| {
-                        app_state.write().simulation_mode = SimulationMode::TwoT3;
+                        mode.set(SimulationMode::TwoT3);
                     },
                     "Two T3 Weapons"
                 }
                 button {
                     class: "{five_one_class}",
                     onclick: move |_| {
-                        app_state.write().simulation_mode = SimulationMode::FiveOne;
+                        mode.set(SimulationMode::FiveOne);
                     },
                     "5:1"
                 }

@@ -8,7 +8,7 @@ use self::components::{
     skills::SkillSelect,
 };
 use self::simulate::SimulationResults;
-use self::state::{AppState, SimulationMode};
+use self::state::{GauntletState, SimulationMode};
 
 pub mod components;
 pub mod simulate;
@@ -18,9 +18,8 @@ pub mod worker;
 
 #[component]
 pub fn Gauntlet() -> Element {
-    use_context_provider(|| Signal::new(AppState::default()));
-    let app_state = use_context::<Signal<AppState>>();
-    let simulation_mode = app_state.read().simulation_mode;
+    let state = use_context::<GauntletState>();
+    let simulation_mode = state.simulation_mode.cloned();
     let loadout_group_key = match simulation_mode {
         SimulationMode::TwoT3 => "two-t3",
         SimulationMode::FiveOne => "five-one",

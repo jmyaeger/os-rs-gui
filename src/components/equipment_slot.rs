@@ -1,11 +1,11 @@
-use crate::state::AppState;
 use dioxus::prelude::*;
 use osrs::types::equipment::GearSlot;
+use osrs::types::player::Player;
 
 #[component]
 pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
-    let mut state = use_context::<Signal<AppState>>();
-    let current_item = state.read().player.get_slot(&slot_type);
+    let mut player = use_context::<Signal<Player>>();
+    let current_item = player.read().get_slot(&slot_type);
     let item_name = match current_item {
         Some(ref item) => item.name(),
         None => "",
@@ -25,9 +25,9 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
             "type": "button",
             class: "{button_class}",
             title: "{item_name}",
-            onmousedown: move |_| {
+            onclick: move |_| {
                 if current_item.is_some() {
-                    state.write().player.unequip_slot(&slot_type);
+                    player.write().unequip_slot(&slot_type);
                 }
             },
             {

@@ -1,6 +1,6 @@
 use crate::pages::gauntlet::components::loadout::LoadoutStyle;
 use crate::pages::gauntlet::components::select::Select;
-use crate::pages::gauntlet::state::AppState;
+use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
 use osrs::types::equipment::CombatStyle;
 
@@ -34,28 +34,9 @@ fn get_styles_for_weapon(weapon: &str) -> (Vec<CombatStyle>, CombatStyle) {
     }
 }
 
-fn selected_player_mut(
-    state: &mut AppState,
-    style: LoadoutStyle,
-) -> &mut osrs::types::player::Player {
-    match style {
-        LoadoutStyle::Melee => &mut state.melee_switch,
-        LoadoutStyle::Ranged => &mut state.ranged_switch,
-        LoadoutStyle::Magic => &mut state.magic_switch,
-    }
-}
-
-fn active_style_for_loadout(state: &AppState, style: LoadoutStyle) -> CombatStyle {
-    match style {
-        LoadoutStyle::Melee => state.melee_switch.attrs.active_style,
-        LoadoutStyle::Ranged => state.ranged_switch.attrs.active_style,
-        LoadoutStyle::Magic => state.magic_switch.attrs.active_style,
-    }
-}
-
 #[component]
 pub fn AttackStyleSelect(style: LoadoutStyle, weapon: ReadSignal<Option<String>>) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut switch = use_context::<GauntletState>().switch_signal(style);
     let (styles, _default) = use_memo(move || {
         weapon()
             .map(|w| get_styles_for_weapon(&w))
@@ -63,7 +44,7 @@ pub fn AttackStyleSelect(style: LoadoutStyle, weapon: ReadSignal<Option<String>>
     })();
 
     let mut current_value = use_signal(move || {
-        let active_style = active_style_for_loadout(&app_state.read(), style);
+        let active_style = switch.peek().attrs.active_style;
         Some(active_style.to_string())
     });
 
@@ -71,7 +52,7 @@ pub fn AttackStyleSelect(style: LoadoutStyle, weapon: ReadSignal<Option<String>>
         if let Some(w) = weapon() {
             let (_, new_default) = get_styles_for_weapon(&w);
             current_value.set(Some(new_default.to_string()));
-            selected_player_mut(&mut app_state.write(), style).set_active_style(new_default);
+            switch.write().set_active_style(new_default);
         }
     });
 
@@ -82,7 +63,7 @@ pub fn AttackStyleSelect(style: LoadoutStyle, weapon: ReadSignal<Option<String>>
             placeholder: "Select attack style...",
             on_change: move |selected: String| {
                 if let Some(new_style) = styles.iter().copied().find(|s| s.to_string() == selected) {
-                    selected_player_mut(&mut app_state.write(), style).set_active_style(new_style);
+                    switch.write().set_active_style(new_style);
                 }
             },
         }

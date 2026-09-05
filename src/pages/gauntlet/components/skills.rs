@@ -1,10 +1,11 @@
 use crate::hiscores::fetch_player_stats;
-use crate::pages::gauntlet::state::AppState;
+use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
+use osrs::types::player::Player;
 
 #[component]
 pub fn SkillSelect() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut player = use_context::<GauntletState>().player;
     let mut rsn_input = use_signal(String::new);
     let mut is_loading = use_signal(|| false);
     let mut error_message = use_signal(|| None::<String>);
@@ -17,7 +18,7 @@ pub fn SkillSelect() -> Element {
                 // Clear any previous error
                 error_message.set(None);
 
-                let result = { lookup_stats(&mut app_state, &rsn).await };
+                let result = { lookup_stats(&mut player, &rsn).await };
 
                 match result {
                     Ok(()) => {
@@ -85,8 +86,8 @@ pub fn SkillSelect() -> Element {
 
 #[component]
 pub fn SkillDisplay(skill: Skill) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
-    let base_level = get_skill_level(&app_state.read(), skill);
+    let mut player = use_context::<GauntletState>().player;
+    let base_level = get_skill_level(&player.read(), skill);
     rsx! {
         div { class: "flex items-center justify-between py-1 px-1 rounded",
             span { class: "text-sm text-gray-400", "{skill.name()}" }
@@ -98,7 +99,7 @@ pub fn SkillDisplay(skill: Skill) -> Element {
                 value: "{base_level}",
                 oninput: move |evt| {
                     if let Ok(new_level) = evt.value().parse::<u32>() {
-                        set_skill_base_level(&mut app_state.write(), skill, new_level.clamp(1, 99));
+                        set_skill_base_level(&mut player.write(), skill, new_level.clamp(1, 99));
                     }
                 },
             }
@@ -139,33 +140,33 @@ const COMBAT_SKILLS: [Skill; 6] = [
     Skill::Hitpoints,
 ];
 
-async fn lookup_stats(app_state: &mut Signal<AppState>, rsn: &str) -> Result<(), String> {
+async fn lookup_stats(player: &mut Signal<Player>, rsn: &str) -> Result<(), String> {
     let stats = fetch_player_stats(rsn).await?;
-    let mut state = app_state.write();
-    state.player.stats = stats;
-    state.player.attrs.name = Some(rsn.to_string());
+    let mut player = player.write();
+    player.stats = stats;
+    player.attrs.name = Some(rsn.to_string());
     Ok(())
 }
 
-fn get_skill_level(app_state: &AppState, skill: Skill) -> u32 {
+fn get_skill_level(player: &Player, skill: Skill) -> u32 {
     match skill {
-        Skill::Attack => app_state.player.stats.attack.current,
-        Skill::Strength => app_state.player.stats.strength.current,
-        Skill::Defence => app_state.player.stats.defence.current,
-        Skill::Ranged => app_state.player.stats.ranged.current,
-        Skill::Magic => app_state.player.stats.magic.current,
-        Skill::Hitpoints => app_state.player.stats.hitpoints.current,
+        Skill::Attack => player.stats.attack.current,
+        Skill::Strength => player.stats.strength.current,
+        Skill::Defence => player.stats.defence.current,
+        Skill::Ranged => player.stats.ranged.current,
+        Skill::Magic => player.stats.magic.current,
+        Skill::Hitpoints => player.stats.hitpoints.current,
     }
 }
 
-fn set_skill_base_level(app_state: &mut AppState, skill: Skill, level: u32) {
+fn set_skill_base_level(player: &mut Player, skill: Skill, level: u32) {
     match skill {
-        Skill::Attack => app_state.player.stats.attack.base = level,
-        Skill::Strength => app_state.player.stats.strength.base = level,
-        Skill::Defence => app_state.player.stats.defence.base = level,
-        Skill::Ranged => app_state.player.stats.ranged.base = level,
-        Skill::Magic => app_state.player.stats.magic.base = level,
-        Skill::Hitpoints => app_state.player.stats.hitpoints.base = level,
+        Skill::Attack => player.stats.attack.base = level,
+        Skill::Strength => player.stats.strength.base = level,
+        Skill::Defence => player.stats.defence.base = level,
+        Skill::Ranged => player.stats.ranged.base = level,
+        Skill::Magic => player.stats.magic.base = level,
+        Skill::Hitpoints => player.stats.hitpoints.base = level,
     }
-    app_state.player.reset_current_stats(true);
+    player.reset_current_stats(true);
 }

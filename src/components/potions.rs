@@ -1,15 +1,15 @@
 use crate::POTIONS_ASSETS;
 use crate::components::search_bar::SearchBar;
-use crate::state::AppState;
 use dioxus::prelude::*;
+use osrs::types::player::Player;
 use osrs::types::potions::Potion;
 use strum::IntoEnumIterator;
 
 const MAX_ACTIVE_POTIONS: usize = 4;
 
-fn get_active_potions_from_state(app_state: &AppState) -> Vec<Potion> {
+fn get_active_potions(player: &Player) -> Vec<Potion> {
     let mut active_potions = Vec::new();
-    let potions = &app_state.player.potions;
+    let potions = &player.potions;
 
     if let Some(attack_potions) = &potions.attack {
         for boost in attack_potions {
@@ -81,14 +81,11 @@ fn get_potion_img_path(potion: Potion) -> String {
 
 #[component]
 pub fn PotionSelect() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut player = use_context::<Signal<Player>>();
     let mut is_collapsed = use_signal(|| false);
 
-    // Derive active potions from app_state (single source of truth)
-    let active_potions = use_memo(move || {
-        let state = app_state.read();
-        get_active_potions_from_state(&state)
-    });
+    // Derive active potions from player state (single source of truth)
+    let active_potions = use_memo(move || get_active_potions(&player.read()));
 
     // Compute available potions (all potions minus active ones)
     let available_potions: Vec<Potion> = {
@@ -138,7 +135,7 @@ pub fn PotionSelect() -> Element {
                                 key: "active-potion-{idx}",
                                 potion: *potion,
                                 on_remove: move |potion: Potion| {
-                                    app_state.write().player.remove_potion(potion);
+                                    player.write().remove_potion(potion);
                                 },
                             }
                         }
@@ -157,7 +154,7 @@ pub fn PotionSelect() -> Element {
                             get_key: get_potion_key,
                             on_select: move |potion: Potion| {
                                 if active_potions.read().len() < MAX_ACTIVE_POTIONS {
-                                    app_state.write().player.add_potion(potion);
+                                    player.write().add_potion(potion);
                                 }
                             },
                             placeholder: "Search for boosts...".to_string(),

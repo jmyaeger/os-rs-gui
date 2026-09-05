@@ -1,5 +1,5 @@
 use crate::PRAYERS_ASSETS;
-use crate::pages::gauntlet::state::AppState;
+use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
 use osrs::types::prayers::Prayer;
 
@@ -45,16 +45,9 @@ use crate::pages::gauntlet::components::loadout::LoadoutStyle;
 
 #[component]
 pub fn PrayerSelect(style: LoadoutStyle) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut switch = use_context::<GauntletState>().switch_signal(style);
 
-    let active_prayers = {
-        let state = app_state.read();
-        match style {
-            LoadoutStyle::Melee => state.melee_switch.prayers.clone(),
-            LoadoutStyle::Ranged => state.ranged_switch.prayers.clone(),
-            LoadoutStyle::Magic => state.magic_switch.prayers.clone(),
-        }
-    };
+    let active_prayers = switch.read().prayers.clone();
     let is_prayer_active = |p: Prayer| active_prayers.contains_prayer(p);
 
     rsx! {
@@ -68,12 +61,7 @@ pub fn PrayerSelect(style: LoadoutStyle) -> Element {
                                 prayer: *prayer,
                                 is_active: is_prayer_active(*prayer),
                                 on_click: move |p: Prayer| {
-                                    let mut state_guard = app_state.write();
-                                    let player = match style {
-                                        LoadoutStyle::Melee => &mut state_guard.melee_switch,
-                                        LoadoutStyle::Ranged => &mut state_guard.ranged_switch,
-                                        LoadoutStyle::Magic => &mut state_guard.magic_switch,
-                                    };
+                                    let mut player = switch.write();
                                     if player.prayers.contains_prayer(p) {
                                         player.remove_prayer(p);
                                     } else {

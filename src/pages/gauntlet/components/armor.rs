@@ -1,5 +1,5 @@
 use crate::pages::gauntlet::components::select::Select;
-use crate::pages::gauntlet::state::AppState;
+use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
 use osrs::types::equipment::{Armor, GearSlot};
 use std::sync::LazyLock;
@@ -53,15 +53,13 @@ static LEGS_OPTIONS: LazyLock<Vec<GearOption>> = LazyLock::new(|| {
     ])
 });
 
-fn apply_slot(state: &mut AppState, slot: GearSlot, armor: Option<&Armor>) {
-    state.melee_switch.unequip_slot(&slot);
-    state.ranged_switch.unequip_slot(&slot);
-    state.magic_switch.unequip_slot(&slot);
-
-    if let Some(a) = armor {
-        let _ = state.melee_switch.equip_item(Box::new(a.clone()));
-        let _ = state.ranged_switch.equip_item(Box::new(a.clone()));
-        let _ = state.magic_switch.equip_item(Box::new(a.clone()));
+fn apply_slot(state: &GauntletState, slot: GearSlot, armor: Option<&Armor>) {
+    for mut switch in [state.melee_switch, state.ranged_switch, state.magic_switch] {
+        let mut player = switch.write();
+        player.unequip_slot(&slot);
+        if let Some(a) = armor {
+            let _ = player.equip_item(Box::new(a.clone()));
+        }
     }
 }
 
@@ -71,7 +69,7 @@ fn find_option<'a>(opts: &'a [GearOption], label: &str) -> Option<&'a GearOption
 
 #[component]
 pub fn ArmorSelect() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let app_state = use_context::<GauntletState>();
 
     let mut selected_tier = use_signal(|| Some(1usize));
     let mut selected_helmet = use_signal(|| None::<String>);
@@ -96,8 +94,6 @@ pub fn ArmorSelect() -> Element {
         let body_label = selected_body();
         let legs_label = selected_legs();
 
-        let mut state = app_state.write();
-
         let helmet_armor = helmet_label
             .as_deref()
             .and_then(|l| find_option(&HELMET_OPTIONS, l))
@@ -113,9 +109,9 @@ pub fn ArmorSelect() -> Element {
             .and_then(|l| find_option(&LEGS_OPTIONS, l))
             .and_then(|o| o.armor.as_ref());
 
-        apply_slot(&mut state, GearSlot::Head, helmet_armor);
-        apply_slot(&mut state, GearSlot::Body, body_armor);
-        apply_slot(&mut state, GearSlot::Legs, legs_armor);
+        apply_slot(&app_state, GearSlot::Head, helmet_armor);
+        apply_slot(&app_state, GearSlot::Body, body_armor);
+        apply_slot(&app_state, GearSlot::Legs, legs_armor);
     });
 
     let tier_btn = |tier: usize| {

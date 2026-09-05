@@ -6,8 +6,10 @@ static NEXT_SEARCH_BAR_ID: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(Props, Clone)]
 pub struct SearchBarProps<T: Clone + PartialEq + 'static> {
-    /// Items to search through
-    pub items: Vec<T>,
+    /// Items to search through. A `ReadSignal` so the filtered-items memo
+    /// re-runs when the caller passes a different list (a plain `Vec` prop
+    /// captured in a memo would go stale).
+    pub items: ReadSignal<Vec<T>>,
     /// Function to filter items based on search term
     pub filter_fn: fn(&T, &str) -> bool,
     /// Function to render an item in the dropdown
@@ -70,7 +72,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
             .to_string()
     });
 
-    let items = props.items.clone();
+    let items = props.items;
     let filter_fn = props.filter_fn;
     let max_results = props.max_results;
 
@@ -81,6 +83,7 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
         }
 
         items
+            .read()
             .iter()
             .filter(|item| (filter_fn)(item, &term))
             .take(max_results)
