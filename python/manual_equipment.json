@@ -1,0 +1,860 @@
+[
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Bronze",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 21,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Iron",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 22,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Steel",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 23,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Black",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 26,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Mithril",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 29,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Adamant",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 37,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Rune",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 46,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Amethyst",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 48,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Toxic blowpipe",
+        "id": 12926,
+        "version": "Dragon",
+        "slot": "weapon",
+        "image": "Toxic blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 55,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Camphor blowpipe",
+        "id": 31575,
+        "version": "Bronze",
+        "slot": "weapon",
+        "image": "Camphor blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 3,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Camphor blowpipe",
+        "id": 31575,
+        "version": "Iron",
+        "slot": "weapon",
+        "image": "Camphor blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 4,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Camphor blowpipe",
+        "id": 31575,
+        "version": "Steel",
+        "slot": "weapon",
+        "image": "Camphor blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 5,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Camphor blowpipe",
+        "id": 31575,
+        "version": "Black",
+        "slot": "weapon",
+        "image": "Camphor blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 8,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Camphor blowpipe",
+        "id": 31575,
+        "version": "Mithril",
+        "slot": "weapon",
+        "image": "Camphor blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 11,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Ironwood blowpipe",
+        "id": 31579,
+        "version": "Bronze",
+        "slot": "weapon",
+        "image": "Ironwood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 5,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Ironwood blowpipe",
+        "id": 31579,
+        "version": "Iron",
+        "slot": "weapon",
+        "image": "Ironwood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 6,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Ironwood blowpipe",
+        "id": 31579,
+        "version": "Steel",
+        "slot": "weapon",
+        "image": "Ironwood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 7,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Ironwood blowpipe",
+        "id": 31579,
+        "version": "Black",
+        "slot": "weapon",
+        "image": "Ironwood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 10,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Ironwood blowpipe",
+        "id": 31579,
+        "version": "Mithril",
+        "slot": "weapon",
+        "image": "Ironwood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 13,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Ironwood blowpipe",
+        "id": 31579,
+        "version": "Adamant",
+        "slot": "weapon",
+        "image": "Ironwood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 21,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Rosewood blowpipe",
+        "id": 31583,
+        "version": "Bronze",
+        "slot": "weapon",
+        "image": "Rosewood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 7,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Rosewood blowpipe",
+        "id": 31583,
+        "version": "Iron",
+        "slot": "weapon",
+        "image": "Rosewood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 8,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Rosewood blowpipe",
+        "id": 31583,
+        "version": "Steel",
+        "slot": "weapon",
+        "image": "Rosewood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 9,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Rosewood blowpipe",
+        "id": 31583,
+        "version": "Black",
+        "slot": "weapon",
+        "image": "Rosewood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 12,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Rosewood blowpipe",
+        "id": 31583,
+        "version": "Mithril",
+        "slot": "weapon",
+        "image": "Rosewood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 15,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    },
+    {
+        "name": "Rosewood blowpipe",
+        "id": 31583,
+        "version": "Adamant",
+        "slot": "weapon",
+        "image": "Rosewood blowpipe.png",
+        "speed": 3,
+        "category": "Thrown",
+        "bonuses": {
+            "strength": {
+                "melee": 0,
+                "ranged": 23,
+                "magic": 0.0
+            },
+            "attack": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 30
+            },
+            "defence": {
+                "stab": 0,
+                "slash": 0,
+                "crush": 0,
+                "magic": 0,
+                "ranged": 0
+            },
+            "prayer": 0
+        },
+        "is_two_handed": true,
+        "attack_range": 5
+    }
+]
