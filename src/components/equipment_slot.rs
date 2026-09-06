@@ -11,9 +11,19 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
         None => "",
     };
     let placeholder_image = format!("{}/{slot_type}.png", crate::PLACEHOLDERS_ASSETS);
+    let equipped = current_item
+        .as_ref()
+        .is_some_and(|item| item.name() != "Unarmed");
+    let can_remove = equipped
+        && (slot_type == GearSlot::Weapon || !player.read().gear.weapon.combat_styles.is_empty());
+    let slot_label = if equipped {
+        format!("Unequip {item_name}")
+    } else {
+        format!("{slot_type}: Empty")
+    };
     let button_class = format!(
         "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] {}",
-        if current_item.is_some() {
+        if equipped {
             "cursor-pointer"
         } else {
             "cursor-default"
@@ -25,9 +35,13 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
             "type": "button",
             class: "{button_class}",
             title: "{item_name}",
+            aria_label: "{slot_label}",
+            disabled: !can_remove,
             onclick: move |_| {
-                if current_item.is_some() {
-                    player.write().unequip_slot(&slot_type);
+                if can_remove {
+                    let mut player = player.write();
+                    player.unequip_slot(&slot_type);
+                    crate::components::ensure_style(&mut player);
                 }
             },
             {

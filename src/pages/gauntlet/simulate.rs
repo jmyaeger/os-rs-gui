@@ -1,4 +1,4 @@
-use crate::pages::gauntlet::components::plots::{FoodHistogram, TimeUnit, TtkCdf};
+use crate::components::plots::{FoodHistogram, TimeUnit, TtkCdf};
 use crate::pages::gauntlet::simulation::build_simulation_input;
 use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
@@ -77,9 +77,13 @@ pub fn SimulationResults() -> Element {
     let simulate = use_action(move || async move {
         let input = build_simulation_input(&state.snapshot());
 
-        let output = crate::pages::gauntlet::worker::run_simulation(input)
+        let output = match crate::worker::run_job(crate::worker::Job::Gauntlet(input), |_| {})
             .await
-            .map_err(anyhow::Error::msg)?;
+            .map_err(anyhow::Error::msg)?
+        {
+            crate::worker::JobOutput::Gauntlet(output) => output,
+            other => return Err(anyhow::anyhow!("unexpected worker response: {other:?}")),
+        };
 
         if output.success {
             let stats = output

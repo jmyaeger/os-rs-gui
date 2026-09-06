@@ -14,7 +14,6 @@ pub mod components;
 pub mod simulate;
 pub mod simulation;
 pub mod state;
-pub mod worker;
 
 #[component]
 pub fn Gauntlet() -> Element {

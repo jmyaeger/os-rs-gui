@@ -37,6 +37,7 @@ features = [
     "Element",
     "ErrorEvent",
     "MessageEvent",
+    "Storage",
     "Window",
     "Worker",
     "WorkerOptions",

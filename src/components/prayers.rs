@@ -42,7 +42,7 @@ const PRAYER_ROWS: [[Prayer; 5]; 5] = [
 ];
 
 #[component]
-pub fn PrayerSelect() -> Element {
+pub fn PrayerSelect(#[props(default = true)] show_header: bool) -> Element {
     let mut player = use_context::<Signal<Player>>();
     let mut is_collapsed = use_signal(|| false);
 
@@ -52,8 +52,11 @@ pub fn PrayerSelect() -> Element {
 
     rsx! {
         div {
+            if show_header {
             // Toggle header
-            div {
+            button {
+                r#type: "button",
+                aria_expanded: "{!is_collapsed()}",
                 class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
                 onclick: move |_| is_collapsed.set(!is_collapsed()),
                 div { class: "flex items-center gap-4",
@@ -91,10 +94,11 @@ pub fn PrayerSelect() -> Element {
                     "▼"
                 }
             }
+            }
 
             // Expanded prayer grid
-            if !is_collapsed() {
-                div { class: "flex flex-col gap-2 items-center mt-2",
+            if !show_header || !is_collapsed() {
+                div { class: "loadout-prayer-grid flex flex-col gap-2 items-center mt-2",
                     for (row_idx , prayer_row) in PRAYER_ROWS.iter().enumerate() {
                         div { key: "prayer-row-{row_idx}", class: "flex gap-2",
                             for (col_idx , prayer) in prayer_row.iter().enumerate() {
@@ -132,9 +136,11 @@ fn PrayerButton(prayer: Prayer, is_active: bool, on_click: EventHandler<Prayer>)
     };
 
     rsx! {
-        div {
-            class: "{button_class}",
-            title: "{prayer}",
+        button {
+            r#type: "button",
+            class: "prayer-icon-button {button_class}",
+            aria_label: "{prayer}",
+            aria_pressed: "{is_active}",
             onclick: move |_| on_click.call(prayer),
             img {
                 class: "p-1 object-contain",
@@ -148,6 +154,7 @@ fn PrayerButton(prayer: Prayer, is_active: bool, on_click: EventHandler<Prayer>)
                     alt: "Selected",
                 }
             }
+            span { class: "prayer-name-tooltip", role: "tooltip", "{prayer}" }
         }
     }
 }

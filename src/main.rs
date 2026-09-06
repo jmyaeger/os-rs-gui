@@ -1,13 +1,14 @@
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
 
-use crate::pages::gauntlet::worker::is_worker_context;
 use crate::routes::Route;
+use crate::worker::is_worker_context;
 
 mod components;
 mod hiscores;
 mod pages;
 mod routes;
+mod worker;
 
 // Asset folders - these must be declared with asset!() to be included in the build
 pub const EQUIPMENT_ASSETS: Asset = asset!("/assets/equipment");

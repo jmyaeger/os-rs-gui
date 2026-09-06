@@ -1,6 +1,6 @@
 use crate::components::search_bar::SearchBar;
 use dioxus::prelude::*;
-use osrs::types::equipment::EquipmentJson;
+use osrs::types::equipment::{CombatStance, CombatStyle, EquipmentJson, Weapon};
 use osrs::types::player::Player;
 use std::sync::LazyLock;
 
@@ -23,6 +23,43 @@ static EQUIPMENT_ITEMS: LazyLock<Option<Vec<EquipmentJson>>> = LazyLock::new(|| 
                 .collect()
         })
 });
+
+/// Every catalog item the search can equip; empty if the catalog failed to parse.
+pub fn equipment_catalog() -> &'static [EquipmentJson] {
+    EQUIPMENT_ITEMS.as_deref().unwrap_or(&[])
+}
+
+/// The style a weapon should default to when the current one does not exist on it.
+pub fn preferred_style(weapon: &Weapon) -> Option<CombatStyle> {
+    weapon
+        .combat_styles
+        .iter()
+        .min_by_key(|(style, option)| {
+            let rank = match option.stance {
+                CombatStance::Rapid => 0,
+                CombatStance::Aggressive => 1,
+                CombatStance::Accurate => 2,
+                CombatStance::Controlled => 3,
+                CombatStance::Autocast => 4,
+                _ => 5,
+            };
+            (rank, style.to_string())
+        })
+        .map(|(style, _)| *style)
+}
+
+/// Keep the active style valid for the equipped weapon and refresh the cached combat type.
+pub fn ensure_style(player: &mut Player) {
+    let current = player.attrs.active_style;
+    let style = if player.gear.weapon.combat_styles.contains_key(&current) {
+        Some(current)
+    } else {
+        preferred_style(&player.gear.weapon)
+    };
+    if let Some(style) = style {
+        player.set_active_style(style);
+    }
+}
 
 fn filter_equipment(item: &EquipmentJson, term: &str) -> bool {
     item.name.to_lowercase().contains(term)
@@ -97,8 +134,9 @@ pub fn EquipmentSelect() -> Element {
                                 })
                         };
 
-                        if let Err(e) = result {
-                            log::error!("{e}");
+                        match result {
+                            Ok(()) => ensure_style(&mut player),
+                            Err(e) => log::error!("{e}"),
                         }
                     },
                     placeholder: "Search for equipment...".to_string(),

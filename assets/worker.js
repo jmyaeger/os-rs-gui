@@ -21,14 +21,7 @@ function requestIdFromEvent(event) {
 }
 
 function postInitErrorForId(id, error) {
-  self.postMessage({
-    id,
-    output: {
-      success: false,
-      stats: null,
-      error,
-    },
-  });
+  self.postMessage({ id, error });
 }
 
 function failQueuedRequests(error) {

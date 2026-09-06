@@ -21,7 +21,7 @@ const TEXT_COLOR: &str = "#e5e7eb"; // gray-200
 const LEGEND_BG_COLOR: &str = "rgba(31, 41, 55, 0.95)"; // gray-800 with opacity
 const HOVER_BG_COLOR: &str = "rgba(31, 41, 55, 0.95)"; // gray-800 near-opaque
 const HOVER_BORDER_COLOR: &str = "rgba(75, 85, 99, 0.5)"; // gray-600
-const TRACE_COLORS: [&str; 8] = [
+pub const TRACE_COLORS: [&str; 8] = [
     "#a78bfa", // soft violet
     "#3ec9a7", // teal
     "#e07a5f", // terracotta/coral
@@ -38,6 +38,14 @@ static NEXT_PLOT_ID: AtomicUsize = AtomicUsize::new(1);
 pub enum TimeUnit {
     Ticks,
     Seconds,
+}
+
+/// Colour for trace `i`: the caller's override when given, else the shared palette.
+fn trace_color(colors: &Option<Vec<String>>, i: usize) -> String {
+    colors
+        .as_ref()
+        .and_then(|colors| colors.get(i).cloned())
+        .unwrap_or_else(|| TRACE_COLORS[i % TRACE_COLORS.len()].to_string())
 }
 
 fn next_plot_id(prefix: &str) -> String {
@@ -186,6 +194,7 @@ fn create_ttk_cdf(
     distributions: Vec<Vec<f64>>,
     time_unit: TimeUnit,
     labels: Option<Vec<String>>,
+    colors: Option<Vec<String>>,
 ) -> Plot {
     let mut plot = Plot::new();
 
@@ -213,7 +222,7 @@ fn create_ttk_cdf(
             .map(|s| s.as_str())
             .unwrap_or("");
 
-        let color = TRACE_COLORS[i % TRACE_COLORS.len()];
+        let color = trace_color(&colors, i);
         let trace = Scatter::new(ttks, cum_probs)
             .mode(Mode::Lines)
             .name(name)
@@ -240,14 +249,15 @@ pub fn TtkCdf(
     distributions: Vec<Vec<f64>>,
     time_unit: Signal<TimeUnit>,
     labels: Option<Vec<String>>,
+    #[props(default)] colors: Option<Vec<String>>,
 ) -> Element {
     let plot_id = use_signal(|| next_plot_id("ttk-cdf"));
 
     #[cfg(target_arch = "wasm32")]
-    use_effect(use_reactive!(|distributions, labels| {
+    use_effect(use_reactive!(|distributions, labels, colors| {
         let id = plot_id();
 
-        let plot = create_ttk_cdf(distributions, time_unit(), labels);
+        let plot = create_ttk_cdf(distributions, time_unit(), labels, colors);
         render_plot(&id, &plot);
     }));
 
@@ -263,6 +273,7 @@ fn create_ttk_histogram(
     distributions: Vec<Vec<f64>>,
     time_unit: TimeUnit,
     labels: Option<Vec<String>>,
+    colors: Option<Vec<String>>,
 ) -> Plot {
     let mut plot = Plot::new();
 
@@ -276,7 +287,7 @@ fn create_ttk_histogram(
             ttks = ttks.iter().map(|ttk| ttk * 0.6).collect();
         }
 
-        let color = TRACE_COLORS[i % TRACE_COLORS.len()];
+        let color = trace_color(&colors, i);
         let hist = Bar::new(ttks, probs)
             .name(
                 labels
@@ -309,14 +320,15 @@ pub fn TtkHistogram(
     distributions: Vec<Vec<f64>>,
     time_unit: TimeUnit,
     labels: Option<Vec<String>>,
+    #[props(default)] colors: Option<Vec<String>>,
 ) -> Element {
     let plot_id = use_signal(|| next_plot_id("ttk-histogram"));
 
     #[cfg(target_arch = "wasm32")]
-    use_effect(use_reactive!(|distributions, time_unit, labels| {
+    use_effect(use_reactive!(|distributions, time_unit, labels, colors| {
         let id = plot_id();
 
-        let plot = create_ttk_histogram(distributions, time_unit, labels);
+        let plot = create_ttk_histogram(distributions, time_unit, labels, colors);
         render_plot(&id, &plot);
     }));
 

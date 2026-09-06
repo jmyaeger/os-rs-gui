@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use osrs::types::player::Player;
 
 use crate::pages::{gauntlet::Gauntlet, gauntlet::state::GauntletState, home::Home};
 
@@ -18,7 +17,8 @@ pub enum Route {
 fn Layout() -> Element {
     // Page state lives here (not in the page components) so it survives
     // navigating between pages.
-    use_context_provider(|| Signal::new(Player::default()));
+    use_context_provider(|| Signal::new(crate::pages::home::initial_player()));
+    use_context_provider(crate::pages::home::HomeState::new);
     use_context_provider(GauntletState::new);
 
     let route = use_route::<Route>();

@@ -1,13 +1,11 @@
 mod equipment_grid;
 mod equipment_select;
 mod equipment_slot;
-mod potions;
+pub mod plots;
 mod prayers;
 mod search_bar;
-mod skills;
 
 pub use equipment_grid::EquipmentGrid;
-pub use equipment_select::EquipmentSelect;
-pub use potions::PotionSelect;
+pub use equipment_select::{EquipmentSelect, ensure_style, equipment_catalog, preferred_style};
 pub use prayers::PrayerSelect;
-pub use skills::SkillsSelect;
+pub use search_bar::SearchBar;
