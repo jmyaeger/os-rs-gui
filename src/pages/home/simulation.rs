@@ -154,7 +154,6 @@ pub struct SingleWayOutput {
     /// Seconds.
     pub mean: f64,
     pub median: f64,
-    pub p90: f64,
     /// Fraction of attacks, special attacks included, that hit.
     pub accuracy: f64,
     pub attacks_per_kill: f64,
@@ -344,7 +343,6 @@ pub fn run_single_way(
         trials: ttks.len() as u32,
         mean: ttks.iter().sum::<usize>() as f64 / count * SECONDS_PER_TICK,
         median: quantile(0.5) * SECONDS_PER_TICK,
-        p90: quantile(0.9) * SECONDS_PER_TICK,
         accuracy: if attempts > 0 {
             hits as f64 / attempts as f64
         } else {
