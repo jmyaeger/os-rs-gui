@@ -20,7 +20,6 @@ const AUTOCAST_STYLES: [CombatStyle; 2] = [CombatStyle::Spell, CombatStyle::Defe
 #[component]
 pub fn EquipmentPanel() -> Element {
     let mut player = use_context::<Signal<Player>>();
-    let state = use_context::<HomeState>();
     let mut styles: Vec<_> = player
         .read()
         .gear
@@ -174,9 +173,6 @@ pub fn EquipmentPanel() -> Element {
                     onclick: move |_| player.write().attrs.spell = None,
                     "Clear stored spell ({spell_name})"
                 }
-            }
-            if state.sim.read().thrall.is_some() {
-                p { class: "home-muted", "Thralls apply to simulations only." }
             }
         }
     }
@@ -400,7 +396,6 @@ pub fn BoostsPanel() -> Element {
                 select {
                     class: "input-field",
                     value: thrall.map(ThrallChoice::key).unwrap_or(""),
-                    title: "Thralls are applied by the simulation, not by the calculated stats",
                     onchange: move |event| state.sim.write().thrall = ThrallChoice::from_key(&event.value()),
                     option { value: "", selected: thrall.is_none(), "None" }
                     for choice in ThrallChoice::ALL {

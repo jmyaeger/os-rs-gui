@@ -544,7 +544,7 @@ mod tests {
             ("Torva full helm", None),
             ("Osmumten's fang", None),
             ("Avernic defender", None),
-            ("Bow of faerdhinen", Some("Charged")),
+            ("Bow of Faerdhinen", Some("Charged")),
         ] {
             let item = GearItem {
                 slot: if name.contains("fang") || name.contains("Bow") {
@@ -571,7 +571,7 @@ mod tests {
         let spec = LoadoutSpec::from_player(&player);
         assert_eq!(
             spec.item(GearSlot::Weapon).unwrap().name,
-            "Bow of faerdhinen"
+            "Bow of Faerdhinen"
         );
         assert!(
             spec.item(GearSlot::Shield).is_none(),
@@ -583,7 +583,7 @@ mod tests {
 
         let restored = parsed.to_player();
         assert!(restored.warnings.is_empty(), "{:?}", restored.warnings);
-        assert_eq!(restored.player.gear.weapon.name, "Bow of faerdhinen");
+        assert_eq!(restored.player.gear.weapon.name, "Bow of Faerdhinen");
         assert_eq!(restored.player.attrs.active_style, CombatStyle::Rapid);
         assert_eq!(restored.player.stats.ranged, player.stats.ranged);
         assert!(restored.player.prayers.contains_prayer(Prayer::Rigour));

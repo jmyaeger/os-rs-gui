@@ -6,7 +6,8 @@ use osrs::calc::dps_calc::{
 };
 use osrs::calc::hit_dist::AttackDistribution;
 use osrs::calc::rolls::calc_active_player_rolls;
-use osrs::constants::{SECONDS_PER_TICK, USES_OWN_AMMO};
+use osrs::combat::thralls::Thrall;
+use osrs::constants::{SECONDS_PER_TICK, THRALL_ATTACK_SPEED, USES_OWN_AMMO};
 use osrs::error::DpsCalcError;
 use osrs::types::equipment::{CombatStance, CombatType};
 use osrs::types::monster::Monster;
@@ -14,6 +15,8 @@ use osrs::types::player::Player;
 use osrs::types::spells::{Spell, StandardSpell};
 use serde::{Deserialize, Serialize};
 
+use super::simulation::ThrallChoice;
+use super::state::HomeState;
 #[cfg(test)]
 use super::target::TargetConfig;
 
@@ -22,7 +25,7 @@ pub struct CombatMetrics {
     pub dps: f64,
     /// Probability that the first hitsplat passes its accuracy check, including accurate zeros.
     pub accuracy: f64,
-    /// Maximum combined immediate damage from one attack, including additional hitsplats.
+    /// Maximum combined damage from one attack, including additional hitsplats.
     pub max_hit: u32,
     pub attack_roll: i32,
     pub defence_roll: i32,
@@ -82,6 +85,7 @@ pub fn spec_metrics(
     let mut player = player.clone();
     player.update_bonuses();
     player.update_set_effects();
+    check_magic_is_supported(&player)?;
     calc_active_player_rolls(&mut player, monster);
     let distribution = get_distribution(&player, monster, true).map_err(|error| match error {
         DpsCalcError::SpecNotImplemented(_) => {
@@ -228,17 +232,41 @@ fn prepare(player: &Player, monster: &Monster) -> Result<Prepared, String> {
     })
 }
 
+/// A thrall's contribution in damage per second.
+///
+/// Thralls attack on their own timer, every `THRALL_ATTACK_SPEED` ticks, and roll
+/// uniformly between 0 and their maximum, so their mean hit is half the maximum.
+/// Values come from the engine so the calculator and the simulation agree.
+fn thrall_dps(thrall: Option<Thrall>, monster: &Monster) -> f64 {
+    thrall
+        .filter(|thrall| !monster.is_immune_to_thrall(*thrall))
+        .map(|thrall| {
+            let mean_hit = f64::from(thrall.max_hit()) / 2.0;
+            mean_hit / (f64::from(THRALL_ATTACK_SPEED) * SECONDS_PER_TICK)
+        })
+        .unwrap_or(0.0)
+}
+
 /// Main-weapon metrics against the target's opening state. Special attacks are not applied.
-pub fn calculate_against(player: &Player, monster: &Monster) -> Result<CombatMetrics, String> {
+pub fn calculate_against(
+    player: &Player,
+    monster: &Monster,
+    thralls: Option<Thrall>,
+) -> Result<CombatMetrics, String> {
     let Prepared {
         player,
         distribution,
     } = prepare(player, monster)?;
     let accuracy = get_hit_chance(&player, monster, false)
         .map_err(|error| format!("Error calculating the hit chance: {error:?}."))?;
-    let expected_damage = distribution.get_expected_damage();
+    // The distribution's own damage decides whether the fight can progress; the
+    // burn-inclusive figure below is for display and for DPS.
+    let immediate_damage = distribution.get_expected_damage();
+    let expected_damage = get_expected_damage(&distribution, &player, monster, false)
+        .map_err(|error| format!("Error calculating expected hit: {error:?}"))?;
     let dps = get_dps(&distribution, &player, monster, false)
-        .map_err(|error| format!("Error calculating DPS: {error:?}"))?;
+        .map_err(|error| format!("Error calculating DPS: {error:?}"))?
+        + thrall_dps(thralls, monster);
     let combat_type = player.combat_type();
     let mut attack_roll = player
         .att_rolls
@@ -250,7 +278,7 @@ pub fn calculate_against(player: &Player, monster: &Monster) -> Result<CombatMet
     {
         attack_roll = attack_roll * 5 / 4;
     }
-    let expected_ttk = if expected_damage > 0.0 {
+    let expected_ttk = if immediate_damage > 0.0 {
         get_ttk(&distribution, &player, monster, false, false)
             .ok()
             .filter(|ttk| ttk.is_finite() && *ttk > 0.0)
@@ -269,11 +297,15 @@ pub fn calculate_against(player: &Player, monster: &Monster) -> Result<CombatMet
 }
 
 #[cfg(test)]
-pub fn calculate(player: &Player, target: &TargetConfig) -> Result<CombatMetrics, String> {
+pub fn calculate(
+    player: &Player,
+    target: &TargetConfig,
+    thralls: Option<Thrall>,
+) -> Result<CombatMetrics, String> {
     let monster = target
         .combat_monster()
         .ok_or("The target is invalid or its starting HP exceeds its maximum")?;
-    calculate_against(player, &monster)
+    calculate_against(player, &monster, thralls)
 }
 
 /// Full time-to-kill distribution for the main weapon. More expensive than
@@ -320,19 +352,22 @@ pub fn ttk_distribution(player: &Player, monster: &Monster) -> Result<TtkSummary
     })
 }
 
+/// Whether the engine can work out this weapon's magic max hit without a spell.
+///
+/// Mirrors `charged_staff_max_hit` and `salamander_max_hit` in os-rs, whose
+/// fallback arms panic rather than returning an error, so anything missing here
+/// would take the whole app down.
 fn has_inbuilt_magic_attack(player: &Player) -> bool {
-    // Keep this aligned with osrs::calc::rolls::charged_staff_max_hit and
-    // salamander_max_hit; unsupported equipment must not reach their panic arms.
     matches!(
         player.gear.weapon.name.as_str(),
         "Starter staff"
             | "Warped sceptre"
-            | "Trident of the seas"
-            | "Trident of the seas (e)"
+            | "Trident of the Seas"
+            | "Trident of the Seas (e)"
             | "Thammaron's sceptre"
             | "Accursed sceptre"
-            | "Trident of the swamp"
-            | "Trident of the swamp (e)"
+            | "Trident of the Swamp"
+            | "Trident of the Swamp (e)"
             | "Sanguinesti staff"
             | "Dawnbringer"
             | "Tumeken's shadow"
@@ -349,6 +384,22 @@ fn has_inbuilt_magic_attack(player: &Player) -> bool {
             | "Black salamander"
             | "Tecu salamander"
     )
+}
+
+/// Reject a magic attack the engine would panic on instead of letting it abort
+/// the app. Casting a spell is always fine; otherwise the weapon must be one the
+/// engine knows an inbuilt max hit for.
+pub(super) fn check_magic_is_supported(player: &Player) -> Result<(), String> {
+    if player.combat_type() == CombatType::Magic
+        && player.attrs.spell.is_none()
+        && !has_inbuilt_magic_attack(player)
+    {
+        return Err(format!(
+            "The engine has no magic max hit for {}. Select a spell to cast with it.",
+            player.gear.weapon.name
+        ));
+    }
+    Ok(())
 }
 
 fn has_required_ammunition(player: &Player) -> bool {
@@ -387,9 +438,13 @@ pub fn format_seconds(seconds: f64) -> String {
 #[component]
 pub fn MetricsStrip(monster: ReadSignal<Option<Monster>>) -> Element {
     let player = use_context::<Signal<Player>>();
-    let metrics = use_memo(move || match &*monster.read() {
-        Some(monster) => calculate_against(&player.read(), monster),
-        None => Err("The target is invalid or its starting HP exceeds its maximum".to_string()),
+    let state = use_context::<HomeState>();
+    let metrics = use_memo(move || {
+        let thrall = state.sim.read().thrall.map(ThrallChoice::engine);
+        match &*monster.read() {
+            Some(monster) => calculate_against(&player.read(), monster, thrall),
+            None => Err("The target is invalid or its starting HP exceeds its maximum".to_string()),
+        }
     });
 
     rsx! {
@@ -397,7 +452,7 @@ pub fn MetricsStrip(monster: ReadSignal<Option<Monster>>) -> Element {
             class: "metrics-strip",
             aria_label: "Calculated main-weapon stats",
             p { class: "metrics-note",
-                "Main weapon against the target's starting state. Special attacks, thralls and burn are not included."
+                "Main weapon against the target's starting state. Special attacks are not included."
             }
             match &*metrics.read() {
                 Ok(metrics) => rsx! {
@@ -406,23 +461,23 @@ pub fn MetricsStrip(monster: ReadSignal<Option<Monster>>) -> Element {
                             label: "DPS",
                             value: format!("{:.2}", metrics.dps),
                             emphasis: true,
-                            help: "Immediate damage per second, including procs and multi-hit attacks. Excludes delayed burns and poison.",
+                            help: "Average damage per second, including burn and thralls.",
                         }
                         MetricTile {
                             label: "Expected hit",
                             value: format!("{:.2}", metrics.expected_hit),
-                            help: "Average damage per attack across hits and misses.",
+                            help: "Average damage per attack, including burn but not thralls.",
                         }
                         MetricTile {
                             label: "Max hit",
                             value: metrics.max_hit.to_string(),
-                            help: "Maximum combined damage across all hitsplats in one attack.",
+                            help: "Maximum combined damage of one hit, not including burn or thralls.",
                         }
                         MetricTile {
                             label: "Accuracy",
                             value: format!("{:.2}", metrics.accuracy * 100.0),
                             unit: "%",
-                            help: "First hitsplat accuracy, including successful zero-damage hits.",
+                            help: "Hit chance of a single accuracy roll",
                         }
                         MetricTile { label: "Attack roll", value: metrics.attack_roll.to_string() }
                         MetricTile {
@@ -471,8 +526,8 @@ mod tests {
     #[test]
     fn invocation_scaling_reaches_displayed_defence_roll() {
         let player = Player::default();
-        let normal = calculate(&player, &TargetConfig::example("Zebak", 0, 0, 0)).unwrap();
-        let raid = calculate(&player, &TargetConfig::example("Zebak", 300, 2, 0)).unwrap();
+        let normal = calculate(&player, &TargetConfig::example("Zebak", 0, 0, 0), None).unwrap();
+        let raid = calculate(&player, &TargetConfig::example("Zebak", 300, 2, 0), None).unwrap();
         assert_eq!(raid.defence_roll, normal.defence_roll * 2200 / 1000);
         assert!(raid.accuracy < normal.accuracy);
     }
@@ -481,11 +536,16 @@ mod tests {
     fn starting_reduction_updates_accuracy_without_changing_player() {
         let player = Player::default();
         let before_stats = player.stats;
-        let normal =
-            calculate(&player, &TargetConfig::example("General Graardor", 0, 0, 0)).unwrap();
+        let normal = calculate(
+            &player,
+            &TargetConfig::example("General Graardor", 0, 0, 0),
+            None,
+        )
+        .unwrap();
         let reduced = calculate(
             &player,
             &TargetConfig::example("General Graardor", 0, 0, 40),
+            None,
         )
         .unwrap();
         assert_eq!(reduced.defence_roll, (210 + 9) * (90 + 64));
@@ -501,7 +561,7 @@ mod tests {
             .equip_item(Box::new(Weapon::new("Staff of air", None).unwrap()))
             .unwrap();
         player.set_active_style(CombatStyle::Spell);
-        assert!(calculate(&player, &TargetConfig::default()).is_err());
+        assert!(calculate(&player, &TargetConfig::default(), None).is_err());
     }
 
     #[test]
@@ -513,7 +573,7 @@ mod tests {
         player.set_active_style(CombatStyle::Lash);
         let target = TargetConfig::example("General Graardor", 0, 0, 0);
         let monster = target.combat_monster().unwrap();
-        let metrics = calculate_against(&player, &monster).unwrap();
+        let metrics = calculate_against(&player, &monster, None).unwrap();
         let summary = ttk_distribution(&player, &monster).unwrap();
         let expected = metrics.expected_ttk.unwrap();
         assert!(

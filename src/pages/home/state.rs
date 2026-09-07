@@ -2,7 +2,7 @@
 //! state survives navigation; the history and draft also survive reloads.
 
 use super::metrics::{CombatMetrics, TtkSummary, calculate_against, ttk_distribution};
-use super::simulation::{SimOptions, SingleWayInput, SingleWayOutput};
+use super::simulation::{SimOptions, SingleWayInput, SingleWayOutput, ThrallChoice};
 use super::spec::{BaseStats, LoadoutSpec};
 use super::storage;
 use super::strategy::SpecPlan;
@@ -85,7 +85,11 @@ impl ResultEntry {
                 "The target is invalid or its starting HP exceeds its maximum".to_string()
             })
             .and_then(|monster| {
-                let metrics = calculate_against(player, &monster)?;
+                let metrics = calculate_against(
+                    player,
+                    &monster,
+                    sim_options.thrall.map(ThrallChoice::engine),
+                )?;
                 Ok((metrics, ttk_distribution(player, &monster)))
             });
         let (metrics, ttk, note) = match outcome {

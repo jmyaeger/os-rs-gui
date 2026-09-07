@@ -3,7 +3,7 @@
 //! Runs inside the shared worker (see `crate::worker`); off the web target it
 //! runs inline, which is how the tests exercise it.
 
-use super::metrics::calculate_against;
+use super::metrics::{calculate_against, check_magic_is_supported};
 use super::spec::{LoadoutSpec, TRACKED_PRAYERS};
 use super::strategy::{DeathCharge, RestorePolicy, SpecPlan, SpecStep, spec_cost, spec_weapons};
 use super::target::TargetConfig;
@@ -106,7 +106,7 @@ impl ThrallChoice {
         Self::ALL.into_iter().find(|choice| choice.key() == key)
     }
 
-    fn engine(self) -> Thrall {
+    pub(super) fn engine(self) -> Thrall {
         match self {
             Self::LesserMelee => Thrall::LesserMelee,
             Self::LesserRanged => Thrall::LesserRanged,
@@ -229,7 +229,8 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
         .simulation_monster()
         .ok_or("The target is invalid or its starting HP exceeds its maximum")?;
     // Reuse the calculator's validation so the simulation fails for the same reasons.
-    calculate_against(&player, &monster)?;
+    // Validation only: a thrall never makes a setup invalid, so it is left out.
+    calculate_against(&player, &monster, None)?;
     calc_active_player_rolls(&mut player, &monster);
     player.switches.clear();
     player.current_switch = None;
@@ -249,6 +250,9 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
             ));
         }
         let switch_player = spec_player(&player, step)?;
+        // GearSwitch::new calculates rolls, which panics for a magic weapon the
+        // engine has no max hit for.
+        check_magic_is_supported(&switch_player)?;
         let label: Rc<str> = Rc::from(format!("{} #{}", step.weapon.name, index + 1));
         let switch = GearSwitch::new(SwitchType::Spec(label), &switch_player, &monster);
         let conditions: Vec<CoreCondition> = step
@@ -275,7 +279,7 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
     }
     let config = SingleWayConfig {
         thralls: input.options.thrall.map(ThrallChoice::engine),
-        remove_final_attack_delay: false,
+        remove_final_attack_delay: true,
         reset_soulreaper_stacks: Some(input.loadout.conditions.soulreaper_stacks),
     };
     SingleWayFight::new(player, monster, config, spec_config).map_err(|error| error.to_string())
@@ -388,7 +392,7 @@ mod tests {
         );
 
         let monster = example.target.combat_monster().unwrap();
-        let expected = calculate_against(&example.loadout.to_player().player, &monster)
+        let expected = calculate_against(&example.loadout.to_player().player, &monster, None)
             .unwrap()
             .expected_ttk
             .unwrap();
@@ -606,9 +610,11 @@ mod tests {
             let player =
                 spec_player(&main, &step).unwrap_or_else(|error| panic!("{}: {error}", entry.name));
             if let Err(reason) = spec_metrics(&player, &monster, defence) {
+                // A refusal is fine as long as it explains itself; the catch-all
+                // arm means an engine error kind we do not handle yet.
                 assert!(
-                    reason.starts_with("No formula"),
-                    "{}: unexpected failure: {reason}",
+                    !reason.starts_with("The engine could not build"),
+                    "{}: unhandled engine error: {reason}",
                     entry.name
                 );
             }
@@ -672,7 +678,7 @@ mod tests {
             let (defence, _) = spec_defence_type(name, step.style_combat_type().unwrap());
 
             let spec = spec_metrics(&player, &monster, defence).unwrap();
-            let normal = calculate_against(&player, &monster).unwrap();
+            let normal = calculate_against(&player, &monster, None).unwrap();
             assert!(
                 spec.expected_hit > normal.expected_hit * 1.5,
                 "{name}: spec expects {:.2} but a normal hit expects {:.2}",
@@ -686,6 +692,54 @@ mod tests {
                 normal.max_hit
             );
         }
+    }
+
+    /// A thrall adds its own damage on its own timer, so it raises DPS without
+    /// touching accuracy, max hit or the rolls. Values come from the engine, so
+    /// this also catches the engine changing a thrall's damage or cadence.
+    #[test]
+    fn thralls_add_damage_per_second_without_changing_the_weapon() {
+        use super::super::metrics::calculate_against;
+        use osrs::constants::{SECONDS_PER_TICK, THRALL_ATTACK_SPEED};
+
+        let example = examples().into_iter().next().unwrap();
+        let player = example.loadout.to_player().player;
+        let monster = example.target.combat_monster().unwrap();
+
+        let plain = calculate_against(&player, &monster, None).unwrap();
+        let interval = f64::from(THRALL_ATTACK_SPEED) * SECONDS_PER_TICK;
+
+        for choice in [
+            ThrallChoice::LesserMelee,
+            ThrallChoice::SuperiorRanged,
+            ThrallChoice::GreaterMagic,
+        ] {
+            let thrall = choice.engine();
+            let with = calculate_against(&player, &monster, Some(thrall)).unwrap();
+            let expected = f64::from(thrall.max_hit()) / 2.0 / interval;
+            assert!(
+                (with.dps - plain.dps - expected).abs() < 1e-9,
+                "{}: dps {} should be {} above {}",
+                choice.label(),
+                with.dps,
+                expected,
+                plain.dps
+            );
+            // The thrall fights on its own; it must not touch the weapon's numbers.
+            // Summation order inside the engine varies, so compare damage loosely.
+            assert_eq!(with.max_hit, plain.max_hit);
+            assert_eq!(with.attack_roll, plain.attack_roll);
+            assert!((with.accuracy - plain.accuracy).abs() < 1e-9);
+            assert!((with.expected_hit - plain.expected_hit).abs() < 1e-6);
+        }
+
+        // A greater thrall must out-damage a lesser one.
+        let lesser =
+            calculate_against(&player, &monster, Some(ThrallChoice::LesserMelee.engine())).unwrap();
+        let greater =
+            calculate_against(&player, &monster, Some(ThrallChoice::GreaterMelee.engine()))
+                .unwrap();
+        assert!(greater.dps > lesser.dps);
     }
 
     #[test]

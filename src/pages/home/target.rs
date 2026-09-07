@@ -929,9 +929,9 @@ mod tests {
             .unwrap();
         player.set_active_style(CombatStyle::Lunge);
         target.starting_hp = maximum / 4;
-        let before = super::super::metrics::calculate(&player, &target).unwrap();
+        let before = super::super::metrics::calculate(&player, &target, None).unwrap();
         target.starting_hp -= 1;
-        let after = super::super::metrics::calculate(&player, &target).unwrap();
+        let after = super::super::metrics::calculate(&player, &target, None).unwrap();
         assert_eq!(after.attack_roll, before.attack_roll * 5 / 4);
         assert!(after.accuracy > before.accuracy);
     }
@@ -950,31 +950,5 @@ mod tests {
         let json = serde_json::to_string(&target).unwrap();
         let parsed: TargetConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.after_load(), target);
-    }
-}
-
-#[cfg(test)]
-mod probe {
-    #[test]
-    fn probe_catalog() {
-        println!("MONSTERS len = {}", super::MONSTERS.len());
-        let raw: Vec<serde_json::Value> = serde_json::from_str(super::MONSTER_JSON).unwrap();
-        let zebak = raw
-            .iter()
-            .find(|m| m["info"]["name"] == "Zebak")
-            .expect("zebak in raw json");
-        let one = serde_json::to_string(&vec![zebak.clone()]).unwrap();
-        match osrs::types::monster::Monster::from_json_str(
-            "Zebak",
-            zebak["info"]["version"].as_str(),
-            &one,
-        ) {
-            Ok(m) => println!("engine parsed OK: hp={}", m.stats.hitpoints.current),
-            Err(e) => println!("engine ERROR: {e:?}"),
-        }
-        match super::MONSTERS.iter().find(|m| m.info.name == "Zebak") {
-            Some(m) => println!("record hp={} def={}", m.stats.hitpoints, m.stats.defence),
-            None => println!("no Zebak record"),
-        }
     }
 }

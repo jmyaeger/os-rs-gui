@@ -261,7 +261,7 @@ pub fn ResultsPanel() -> Element {
                     } else {
                         p { class: "home-muted",
                             if any_simulated {
-                                "Simulated results include special attacks and thralls. "
+                                "Simulated results include special attacks. "
                             }
                             "Click a legend entry to hide or show it."
                         }
@@ -463,7 +463,7 @@ fn ResultCard(
                     span {
                         class: "home-eyebrow",
                         title: "Calculated from the main weapon against the target's starting state",
-                        "Main weapon · excludes specs & thralls"
+                        "Metrics · excludes specs, includes thralls and burn"
                     }
                     div { class: "result-calculated-grid",
                         div {
