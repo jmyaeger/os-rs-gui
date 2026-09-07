@@ -134,15 +134,7 @@ def main():
         try:
             version = k.split("#", 1)[1]
         except IndexError:
-            version = ""
-
-        # If this is a CoX monster Challenge Mode variant, remove it. This will be handled by the calculator UI.
-        if "Challenge Mode" in version:
-            print(k + " is a CoX CM variant - skipping.")
-            continue
-
-        if "Deadman" in k:
-            continue
+            version = None
 
         # Skip monsters that aren't in the main namespace on the wiki
         if re.match("^([A-z]*):", k):
@@ -152,11 +144,11 @@ def main():
             continue
 
         # Skip Fight Caves spawn point monsters
-        if "Spawn point" in version:
+        if version is not None and "Spawn point" in version:
             continue
 
         # Skip Duke Sucellus non-attackable monsters and Hueycoatyl defeated
-        if "Asleep" in version or "Defeated" in version:
+        if version is not None and ("Asleep" in version or "Defeated" in version):
             continue
 
         # Skip Guardians of the Rift barriers which are not attackable
@@ -178,8 +170,21 @@ def main():
             else:
                 burn_immunity = None
 
+        try:
+            poison_resistance = int(v.get("poison_resistance"))
+        except (ValueError, TypeError):
+            poison_resistance = 0
+        try:
+            venom_resistance = int(v.get("venom_resistance"))
+        except (ValueError, TypeError):
+            venom_resistance = 0
+        freeze_resistance = v.get("freeze_resistance")
+        if freeze_resistance is not None:
+            freeze_resistance = int(freeze_resistance.split("%")[0])
+        else:
+            freeze_resistance = 0
+
         # Override style specifically for Spinolyps. Both attacks roll ranged vs ranged.
-        # This "patch" will have to be revisited if/when we add protection prayers.
         if "Spinolyp" in k:
             monster_style = ["Ranged"]
 
@@ -193,97 +198,98 @@ def main():
             continue
 
         monster = {
-            "id": monster_id,
-            "name": v.get("page_name"),
-            "version": version,
+            "info": {
+                "id": monster_id,
+                "name": v.get("page_name"),
+                "version": version,
+                "combat_level": v.get("combat_level", 0),
+                "attack_speed": v.get("attack_speed", 0),
+                "attack_styles": monster_style,
+                "size": v.get("size", 0),
+                "attributes": v.get("attribute"),
+            },
+            "stats": {
+                "attack": v.get("attack_level", 0),
+                "defence": v.get("defence_level", 0),
+                "hitpoints": v.get("hitpoints", 0),
+                "magic": v.get("magic_level", 0),
+                "ranged": v.get("ranged_level", 0),
+                "strength": v.get("strength_level", 0),
+            },
+            "bonuses": {
+                "attack": {
+                    "melee": v.get("attack_bonus", 0),
+                    "ranged": v.get("range_attack_bonus", 0),
+                    "magic": v.get("magic_attack_bonus", 0),
+                },
+                "defence": {
+                    "crush": v.get("crush_defence_bonus", 0),
+                    "magic": v.get("magic_defence_bonus", 0),
+                    "heavy": v.get("heavy_range_defence_bonus", 0),
+                    "standard": v.get("standard_range_defence_bonus", 0),
+                    "light": v.get("light_range_defence_bonus", 0),
+                    "slash": v.get("slash_defence_bonus", 0),
+                    "stab": v.get("stab_defence_bonus", 0),
+                },
+                "strength": {
+                    "melee": v.get("strength_bonus", 0),
+                    "ranged": v.get("range_strength_bonus", 0),
+                    "magic": v.get("magic_damage_bonus", 0),
+                },
+                "flat_armour": v.get("flat_armour", 0),
+            },
+            "immunities": {
+                "poison": poison_resistance,
+                "venom": venom_resistance,
+                "freeze": freeze_resistance,
+                "burn": burn_immunity,
+            },
+            "max_hit": v.get("max_hit"),
             "image": ""
             if not v.get("image")
             else v.get("image")[-1].replace("File:", ""),
-            "level": v.get("combat_level", 0),
-            "speed": v.get("attack_speed", 0),
-            "style": monster_style,
-            "size": v.get("size", 0),
-            "max_hit": v.get("max_hit")[0] if v.get("max_hit") else 0,
-            "skills": {
-                "atk": v.get("attack_level", 0),
-                "def": v.get("defence_level", 0),
-                "hp": v.get("hitpoints", 0),
-                "magic": v.get("magic_level", 0),
-                "ranged": v.get("ranged_level", 0),
-                "str": v.get("strength_level", 0),
-            },
-            "offensive": {
-                "atk": v.get("attack_bonus", 0),
-                "magic": v.get("magic_attack_bonus", 0),
-                "magic_str": v.get("magic_damage_bonus", 0),
-                "ranged": v.get("range_attack_bonus", 0),
-                "ranged_str": v.get("range_strength_bonus", 0),
-                "str": v.get("strength_bonus", 0),
-            },
-            "defensive": {
-                "flat_armour": v.get("flat_armour", 0),
-                "crush": v.get("crush_defence_bonus", 0),
-                "magic": v.get("magic_defence_bonus", 0),
-                "heavy": v.get("heavy_range_defence_bonus", 0),
-                "standard": v.get("standard_range_defence_bonus", 0),
-                "light": v.get("light_range_defence_bonus", 0),
-                "slash": v.get("slash_defence_bonus", 0),
-                "stab": v.get("stab_defence_bonus", 0),
-            },
-            "attributes": v.get("attribute", []),
-            "immunities": {
-                "burn": burn_immunity,
-            },
-            "is_slayer_monster": v.get("slayer_experience") is not None,
         }
-
-        if "Awakened" in version:
-            monster["is_slayer_monster"] = False
-        if monster["name"] == "Lizardman shaman (Chambers of Xeric)":
-            monster["is_slayer_monster"] = True
 
         weakness = v.get("elemental_weakness")
         if weakness:
             try:
-                monster["weakness"] = {
+                monster["info"]["weakness"] = {
                     "element": weakness.lower(),
                     "severity": int(v.get("elemental_weakness_percent", 0)),
                 }
-            except:
-                monster["weakness"] = None
+            except:  # noqa: E722
+                monster["info"]["weakness"] = None
         else:
-            monster["weakness"] = None
+            monster["info"]["weakness"] = None
 
         if (
-            monster["id"] == 14779
+            monster["info"]["id"] == 14779
         ):  # Gemstone crab has infinite hp which the wiki returns as 0
-            monster["skills"]["hp"] = 50000
+            monster["stats"]["hitpoints"] = 50000
 
         # Prune...
         if (
             # ...monsters that do not have any hitpoints
-            monster["skills"]["hp"] == 0
+            monster["stats"]["hitpoints"] == 0
             # ...monsters that don't have an ID
-            or monster["id"] is None
+            or monster["info"]["id"] is None
             # ...monsters that are historical
-            or "(historical)" in str.lower(monster["name"])
+            or "(historical)" in str.lower(monster["info"]["name"])
             # ...monsters from the PvM arena
-            or "(pvm arena)" in str.lower(monster["name"])
+            or "(pvm arena)" in str.lower(monster["info"]["name"])
             # ...monsters from DMM Apocalypse
-            or "(deadman: apocalypse)" in str.lower(monster["name"])
-            # ...leagues monsters
-            or "(echo)" in str.lower(monster["name"])
+            or "(deadman: apocalypse)" in str.lower(monster["info"]["name"])
         ):
             continue
 
-        if monster["name"] == "Doom of Mokhaiotl" and (
+        if monster["info"]["name"] == "Doom of Mokhaiotl" and (
             "Shielded" in v.get("name") or "Burrowed" in v.get("name")
         ):
             continue
 
-        if monster["name"] == "Araxxor":
-            if "In combat" in version:
-                monster["version"] = ""
+        if monster["info"]["name"] == "Araxxor":
+            if version is not None and "In combat" in version:
+                monster["info"]["version"] = None
             else:
                 continue
 

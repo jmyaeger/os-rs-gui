@@ -783,3 +783,16 @@ mod tests {
         assert_eq!(parsed.after_load(), target);
     }
 }
+
+#[cfg(test)]
+mod probe {
+    #[test]
+    fn probe_catalog() {
+        println!("MONSTERS len = {}", super::MONSTERS.len());
+        if let Some(m) = super::MONSTERS.iter().find(|m| m.info.name == "Zebak") {
+            println!("zebak hp={} def={} img={:?}", m.stats.hitpoints, m.stats.defence, m.info.extra.get("image"));
+        }
+        let raw: serde_json::Value = serde_json::from_str(super::MONSTER_JSON).unwrap();
+        println!("first raw keys: {:?}", raw[0].as_object().unwrap().keys().collect::<Vec<_>>());
+    }
+}
