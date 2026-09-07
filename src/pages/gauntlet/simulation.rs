@@ -1,4 +1,3 @@
-use crate::pages::gauntlet::components::loadout::LoadoutStyle;
 use crate::pages::gauntlet::state::{SimulationMode, SimulationParams};
 use osrs::calc::analysis::SimulationStats;
 use osrs::calc::rolls::calc_active_player_rolls;
@@ -68,29 +67,24 @@ fn collect_active_prayers(p: &Player) -> Vec<Prayer> {
         .collect()
 }
 
-fn to_switch_type(style: LoadoutStyle) -> SwitchType {
-    match style {
-        LoadoutStyle::Magic => SwitchType::Magic,
-        LoadoutStyle::Ranged => SwitchType::Ranged,
-        LoadoutStyle::Melee => SwitchType::Melee,
-    }
-}
-
 pub fn build_simulation_input(state: &SimulationParams) -> SimulationInput {
     let attack_strategy = match state.simulation_mode {
         SimulationMode::TwoT3 => {
             let styles = state.two_t3_selections;
             AttackStrategy::TwoT3Weapons {
-                style1: to_switch_type(
-                    styles.loadout1_style.expect("loadout1_style should be set"),
-                ),
-                style2: to_switch_type(
-                    styles.loadout2_style.expect("loadout2_style should be set"),
-                ),
+                style1: styles
+                    .loadout1_style
+                    .expect("loadout1_style should be set")
+                    .into(),
+
+                style2: styles
+                    .loadout2_style
+                    .expect("loadout2_style should be set")
+                    .into(),
             }
         }
         SimulationMode::FiveOne => {
-            let main_style = to_switch_type(state.five_one_main_style);
+            let main_style = state.five_one_main_style.into();
             let (other_style1, other_style2) = match main_style {
                 SwitchType::Magic => (SwitchType::Ranged, SwitchType::Melee),
                 SwitchType::Ranged => (SwitchType::Magic, SwitchType::Melee),

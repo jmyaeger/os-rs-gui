@@ -3,7 +3,10 @@ use super::select::Select;
 use crate::pages::gauntlet::components::attack_styles::AttackStyleSelect;
 use crate::pages::gauntlet::state::GauntletState;
 use dioxus::prelude::*;
-use osrs::types::equipment::{CombatStance, CombatStyle, GearSlot};
+use osrs::types::{
+    equipment::{CombatStance, CombatStyle, GearSlot},
+    player::SwitchType,
+};
 
 const MELEE_WEAPONS: [&str; 5] = [
     "Corrupted halberd (perfected)",
@@ -49,6 +52,16 @@ impl LoadoutStyle {
             Self::Melee => "Melee",
             Self::Ranged => "Ranged",
             Self::Magic => "Magic",
+        }
+    }
+}
+
+impl From<LoadoutStyle> for SwitchType {
+    fn from(val: LoadoutStyle) -> Self {
+        match val {
+            LoadoutStyle::Magic => SwitchType::Magic,
+            LoadoutStyle::Melee => SwitchType::Melee,
+            LoadoutStyle::Ranged => SwitchType::Ranged,
         }
     }
 }
