@@ -12,7 +12,7 @@ use osrs::calc::rolls::calc_active_player_rolls;
 use osrs::combat::attacks::specs::get_spec_attack_function;
 use osrs::combat::attacks::standard::get_attack_functions;
 use osrs::combat::simulation::Simulation;
-use osrs::combat::spec::{self, CoreCondition, SpecConfig, SpecRestorePolicy, SpecStrategy};
+use osrs::combat::spec::{self, CoreCondition, SpecConfig, SpecStrategy};
 use osrs::combat::thralls::Thrall;
 use osrs::constants::SECONDS_PER_TICK;
 use osrs::error::SimulationError;
@@ -151,20 +151,13 @@ pub struct SingleWayOutput {
     pub trials: u32,
     /// Probability of the kill landing on each tick; index is the tick.
     pub ticks: Vec<f64>,
-    /// Seconds.
+    /// Mean TTK in seconds.
     pub mean: f64,
+    /// Median TTK in seconds
     pub median: f64,
     /// Fraction of attacks, special attacks included, that hit.
     pub accuracy: f64,
     pub attacks_per_kill: f64,
-}
-
-fn restore_policy(policy: RestorePolicy) -> SpecRestorePolicy {
-    match policy {
-        RestorePolicy::EveryKill => SpecRestorePolicy::RestoreEveryKill,
-        RestorePolicy::EveryNKills(kills) => SpecRestorePolicy::RestoreAfter(kills),
-        RestorePolicy::Never => SpecRestorePolicy::NeverRestore,
-    }
 }
 
 fn death_charge(choice: DeathCharge) -> Option<spec::DeathCharge> {
@@ -268,7 +261,7 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
     let spec_config = (!strategies.is_empty()).then(|| {
         SpecConfig::new(
             strategies,
-            restore_policy(input.plan.restore),
+            input.plan.restore.into(),
             death_charge(input.plan.death_charge),
             input.plan.surge_potion,
         )

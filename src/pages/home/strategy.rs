@@ -9,7 +9,7 @@ use super::simulation::{spec_implemented, spec_player};
 use super::spec::{GearItem, OFFENSIVE_PRAYERS, SLOTS};
 use crate::components::{SearchBar, equipment_catalog};
 use dioxus::prelude::*;
-use osrs::combat::spec::CoreCondition;
+use osrs::combat::spec::{CoreCondition, SpecRestorePolicy};
 use osrs::constants::{
     CRUSH_SPEC_WEAPONS, MAGIC_SPEC_WEAPONS, SLASH_SPEC_WEAPONS, SPEC_COSTS, STAB_SPEC_WEAPONS,
 };
@@ -354,6 +354,16 @@ impl RestorePolicy {
             Self::EveryKill => "Restore every kill".to_string(),
             Self::EveryNKills(n) => format!("Restore every {n} kills"),
             Self::Never => "Never restore".to_string(),
+        }
+    }
+}
+
+impl From<RestorePolicy> for SpecRestorePolicy {
+    fn from(value: RestorePolicy) -> Self {
+        match value {
+            RestorePolicy::EveryKill => SpecRestorePolicy::RestoreEveryKill,
+            RestorePolicy::Never => SpecRestorePolicy::NeverRestore,
+            RestorePolicy::EveryNKills(n) => SpecRestorePolicy::RestoreAfter(n),
         }
     }
 }
