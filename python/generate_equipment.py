@@ -9,6 +9,7 @@ Written for Python 3.9.
 
 import json
 import os
+import re
 import urllib.parse
 
 import requests
@@ -149,48 +150,137 @@ def main():
             print("Skipping - invalid item ID (not an int)")
             continue
 
+        attack_range = v.get("infobox_bonuses.weapon_attack_range")
+        if attack_range is not None:
+            attack_range = int(attack_range)
+
         equipment = {
             "name": v["page_name"],
             "id": item_id,
-            "weight": v.get("weight", 0),
-            "version": v.get("version_anchor", ""),
-            "slot": v.get("infobox_bonuses.equipment_slot", ""),
-            "image": ""
-            if not v.get("image")
-            else v.get("image")[-1].replace("File:", ""),
-            "speed": v.get("infobox_bonuses.weapon_attack_speed", 0),
-            "category": v.get("infobox_bonuses.combat_style", ""),
+            "version": v.get("version_anchor"),
+            "slot": v.get("infobox_bonuses.equipment_slot").lower(),
+            "image": (
+                "" if not v.get("image") else v.get("image")[-1].replace("File:", "")
+            ),
+            "speed": v.get("infobox_bonuses.weapon_attack_speed"),
+            "category": v.get("infobox_bonuses.combat_style"),
             "bonuses": {
-                "str": v.get("infobox_bonuses.strength_bonus"),
-                "ranged_str": v.get("infobox_bonuses.ranged_strength_bonus"),
-                "magic_str": int(v.get("infobox_bonuses.magic_damage_bonus", 0) * 10),
-                "prayer": v.get("infobox_bonuses.prayer_bonus"),
+                "strength": {
+                    "melee": v.get("infobox_bonuses.strength_bonus", 0),
+                    "ranged": v.get("infobox_bonuses.ranged_strength_bonus", 0),
+                    "magic": v.get("infobox_bonuses.magic_damage_bonus", 0.0),
+                },
+                "attack": {
+                    "stab": v.get("infobox_bonuses.stab_attack_bonus", 0),
+                    "slash": v.get("infobox_bonuses.slash_attack_bonus", 0),
+                    "crush": v.get("infobox_bonuses.crush_attack_bonus", 0),
+                    "magic": v.get("infobox_bonuses.magic_attack_bonus", 0),
+                    "ranged": v.get("infobox_bonuses.range_attack_bonus", 0),
+                },
+                "defence": {
+                    "stab": v.get("infobox_bonuses.stab_defence_bonus", 0),
+                    "slash": v.get("infobox_bonuses.slash_defence_bonus", 0),
+                    "crush": v.get("infobox_bonuses.crush_defence_bonus", 0),
+                    "magic": v.get("infobox_bonuses.magic_defence_bonus", 0),
+                    "ranged": v.get("infobox_bonuses.range_defence_bonus", 0),
+                },
+                "prayer": v.get("infobox_bonuses.prayer_bonus", 0),
             },
-            "offensive": {
-                "stab": v.get("infobox_bonuses.stab_attack_bonus"),
-                "slash": v.get("infobox_bonuses.slash_attack_bonus"),
-                "crush": v.get("infobox_bonuses.crush_attack_bonus"),
-                "magic": v.get("infobox_bonuses.magic_attack_bonus"),
-                "ranged": v.get("infobox_bonuses.range_attack_bonus"),
-            },
-            "defensive": {
-                "stab": v.get("infobox_bonuses.stab_defence_bonus"),
-                "slash": v.get("infobox_bonuses.slash_defence_bonus"),
-                "crush": v.get("infobox_bonuses.crush_defence_bonus"),
-                "magic": v.get("infobox_bonuses.magic_defence_bonus"),
-                "ranged": v.get("infobox_bonuses.range_defence_bonus"),
-            },
-            "isTwoHanded": False,
+            "is_two_handed": None,
+            "attack_range": attack_range,
         }
 
         # Handle 2H weapons
+        if equipment["slot"] == "weapon":
+            equipment["is_two_handed"] = False
+
         if equipment["slot"] == "2h":
             equipment["slot"] = "weapon"
-            equipment["isTwoHanded"] = True
+            equipment["is_two_handed"] = True
 
-        # If this is an item from Nightmare Zone, it will become the main variant for all NMZ/SW/Emir's variants
-        if equipment["version"] == "Nightmare Zone":
-            equipment["version"] = ""
+        version = (
+            str(equipment["version"]) if equipment["version"] is not None else None
+        )
+
+        if version is not None:
+            # If this is an item from Nightmare Zone, it will become the main variant for all NMZ/SW/Emir's variants
+            if version == "Nightmare Zone":
+                equipment["version"] = None
+
+            if re.match(r"^(Broken|0|25|50|75|100)$", version):
+                continue
+
+            if version in ["New", "Used"]:
+                equipment["version"] = None
+
+            if equipment["name"] == "Toxic blowpipe" and version in [
+                "Empty",
+                "Charged",
+            ]:
+                continue
+
+            if (
+                equipment["name"]
+                in [
+                    "Accursed sceptre",
+                    "Accursed sceptre (a)",
+                    "Corrupted tumeken's shadow",
+                    "Craw's bow",
+                    "Holy sanguinesti staff",
+                    "Sanguinesti staff",
+                    "Thammaron's sceptre",
+                    "Thammaron's sceptre (a)",
+                    "Trident of the seas",
+                    "Trident of the seas (e)",
+                    "Trident of the swamp",
+                    "trident of the swamp (e)",
+                    "Tumeken's shadow",
+                    "Ursine chainmace",
+                    "Viggora's chainmace",
+                    "Warped sceptre",
+                    "Webweaver bow",
+                ]
+                and version == "Uncharged"
+            ):
+                continue
+
+            if (
+                equipment["name"]
+                in [
+                    "Blade of saeldor",
+                    "Bow of faerdhinen",
+                    "Crystal body",
+                    "Crystal helm",
+                    "Crystal legs",
+                    "Crystal shield",
+                ]
+                and version == "Inactive"
+            ):
+                continue
+
+            if "Black mask" in equipment["name"]:
+                if version in [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "10",
+                ]:
+                    continue
+
+                if version == "Uncharged":
+                    equipment["version"] = None
+
+            if version in ["Locked", "Broken"]:
+                continue
+
+            if version in ["Normal", "Restored", "Undamaged"]:
+                equipment["version"] = None
 
         # Skip last man standing items
         if "(Last Man Standing)" in equipment["name"]:
@@ -199,10 +289,16 @@ def main():
         if equipment["name"] in ITEMS_TO_SKIP:
             continue
 
+        if "(unobtainable item)" in equipment["name"]:
+            continue
+
         if (
             "Keris partisan of amascut" in equipment["name"]
             and "Outside ToA" in v["page_name_sub"]
         ):
+            continue
+
+        if "historical" in equipment["name"]:
             continue
 
         # Set the current equipment item to the calc's equipment list
