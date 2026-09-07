@@ -82,7 +82,10 @@ pub fn SimulationOptions() -> Element {
             .unwrap_or(false)
     });
     let is_eat_at_hp = use_memo(move || {
-        matches!(sim_config.read().eat_strategy, HunllefEatStrategy::EatAtHp(_))
+        matches!(
+            sim_config.read().eat_strategy,
+            HunllefEatStrategy::EatAtHp(_)
+        )
     });
 
     // Combined validity, ignoring inputs that are currently hidden. The
@@ -257,9 +260,7 @@ pub fn SimulationOptions() -> Element {
                             if let Ok(v) = val.parse::<u32>() {
                                 let max = player.peek().stats.hitpoints.base;
                                 if v >= 1 && v <= max {
-                                    sim_config.write().eat_strategy = HunllefEatStrategy::EatAtHp(
-                                        v,
-                                    );
+                                    sim_config.write().eat_strategy = HunllefEatStrategy::EatAtHp(v);
                                 }
                             }
                         },

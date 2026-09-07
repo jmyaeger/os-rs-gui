@@ -13,8 +13,9 @@ pub fn Select(
     rsx! {
         PrimitiveSelect {
             class: "relative w-full",
-            value: value(),
-            placeholder: "{placeholder}",
+            // dioxus-primitives now takes the controlled value as a signal, and
+            // the placeholder moved onto SelectValue.
+            value: Some(value.into()),
             on_value_change: move |new_val: Option<String>| {
                 value.set(new_val.clone());
                 if let (Some(cb), Some(val)) = (&on_change, new_val) {
@@ -23,11 +24,9 @@ pub fn Select(
             },
 
             // Wrapper prevents blur from firing before click toggle
-            div {
-                onmousedown: |e: MouseEvent| e.prevent_default(),
-                SelectTrigger {
-                    class: "w-full input-field text-gray-200 py-1.5 px-2 text-sm rounded cursor-pointer flex justify-between items-center transition-all",
-                    SelectValue {}
+            div { onmousedown: |e: MouseEvent| e.prevent_default(),
+                SelectTrigger { class: "w-full input-field text-gray-200 py-1.5 px-2 text-sm rounded cursor-pointer flex justify-between items-center transition-all",
+                    SelectValue { placeholder: "{placeholder}" }
                     svg {
                         class: "w-3 h-3 ml-1 shrink-0 text-gray-300",
                         view_box: "0 0 24 24",
@@ -39,9 +38,8 @@ pub fn Select(
                 }
             }
 
-            SelectList {
-                class: "absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-auto",
-                for (idx, option) in options.iter().enumerate() {
+            SelectList { class: "absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-auto",
+                for (idx , option) in options.iter().enumerate() {
                     SelectOption::<String> {
                         index: idx,
                         value: option.clone(),

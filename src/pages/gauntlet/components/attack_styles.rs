@@ -62,7 +62,11 @@ pub fn AttackStyleSelect(style: LoadoutStyle, weapon: ReadSignal<Option<String>>
             value: current_value,
             placeholder: "Select attack style...",
             on_change: move |selected: String| {
-                if let Some(new_style) = styles.iter().copied().find(|s| s.to_string() == selected) {
+                if let Some(new_style) = styles
+                    .iter()
+                    .copied()
+                    .find(|s| s.to_string() == selected)
+                {
                     switch.write().set_active_style(new_style);
                 }
             },

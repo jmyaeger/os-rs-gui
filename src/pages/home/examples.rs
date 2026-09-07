@@ -12,6 +12,10 @@ pub struct Example {
     pub loadout: LoadoutSpec,
     pub target: TargetConfig,
     pub plan: SpecPlan,
+    /// Catalog lookups that found nothing. Empty unless the item data has been
+    /// regenerated with different names; the test below guards against that.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub missing: Vec<String>,
 }
 
 fn item(name: &str, version: Option<&str>) -> Option<GearItem> {
@@ -28,30 +32,80 @@ fn gear(items: &[(&str, Option<&str>)]) -> Vec<GearItem> {
         .collect()
 }
 
+/// Names in `items` that the equipment catalog does not contain.
+fn missing_items(items: &[&[(&str, Option<&str>)]]) -> Vec<String> {
+    items
+        .iter()
+        .flat_map(|group| group.iter())
+        .filter(|(name, version)| item(name, *version).is_none())
+        .map(|(name, version)| match version {
+            Some(version) => format!("{name} ({version})"),
+            None => (*name).to_string(),
+        })
+        .collect()
+}
+
+const SWITCH_GEAR: [(&str, Option<&str>); 7] = [
+    ("Torva full helm", None),
+    ("Amulet of torture", None),
+    ("Torva platebody", None),
+    ("Avernic defender", None),
+    ("Torva platelegs", None),
+    ("Ferocious gloves", None),
+    ("Primordial boots", None),
+];
+
+const MELEE_GEAR: [(&str, Option<&str>); 10] = [
+    ("Torva full helm", None),
+    ("Infernal cape", None),
+    ("Amulet of torture", None),
+    ("Osmumten's fang", None),
+    ("Torva platebody", None),
+    ("Avernic defender", None),
+    ("Torva platelegs", None),
+    ("Ferocious gloves", None),
+    ("Primordial boots", None),
+    ("Ultor ring", None),
+];
+
+// Names come from assets/json/equipment.json, which is what the search offers
+// and what a restored loadout resolves against. The examples deliberately avoid
+// items whose names differ from the engine's own database (for instance
+// "Bow of Faerdhinen" vs the engine's "Bow of faerdhinen"), because the engine
+// still matches rules like USES_OWN_AMMO and SPEC_COSTS on its own spelling.
+const RANGED_GEAR: [(&str, Option<&str>); 10] = [
+    ("Masori mask (f)", None),
+    ("Ava's assembler", None),
+    ("Necklace of anguish", None),
+    ("Zaryte crossbow", None),
+    ("Ruby dragon bolts (e)", None),
+    ("Masori body (f)", None),
+    ("Masori chaps (f)", None),
+    ("Barrows gloves", None),
+    ("Pegasian boots", None),
+    ("Ring of suffering (i)", Some("Recoil")),
+];
+
+const MAGIC_GEAR: [(&str, Option<&str>); 9] = [
+    ("Ancestral hat", None),
+    ("Saradomin cape", None),
+    ("Occult necklace", None),
+    ("Tumeken's shadow", Some("Charged")),
+    ("Ancestral robe top", None),
+    ("Ancestral robe bottom", None),
+    ("Tormented bracelet", None),
+    ("Eternal boots", None),
+    ("Magus ring", None),
+];
+
+const MELEE_SPECS: [(&str, Option<&str>); 1] = [("Bandos godsword", None)];
+const MAGIC_SPECS: [(&str, Option<&str>); 2] = [("Dragon warhammer", None), ("Voidwaker", None)];
+
 pub fn examples() -> Vec<Example> {
-    let torva_switch = gear(&[
-        ("Torva full helm", None),
-        ("Amulet of torture", None),
-        ("Torva platebody", None),
-        ("Avernic defender", None),
-        ("Torva platelegs", None),
-        ("Ferocious gloves", None),
-        ("Primordial boots", None),
-    ]);
+    let torva_switch = gear(&SWITCH_GEAR);
 
     let melee = LoadoutSpec {
-        gear: gear(&[
-            ("Torva full helm", None),
-            ("Infernal cape", None),
-            ("Amulet of torture", None),
-            ("Osmumten's fang", None),
-            ("Torva platebody", None),
-            ("Avernic defender", None),
-            ("Torva platelegs", None),
-            ("Ferocious gloves", None),
-            ("Primordial boots", None),
-            ("Ultor ring", None),
-        ]),
+        gear: gear(&MELEE_GEAR),
         prayers: vec![Prayer::Piety],
         potions: vec!["Super combat".into()],
         style: CombatStyle::Lunge,
@@ -63,17 +117,7 @@ pub fn examples() -> Vec<Example> {
     }
 
     let ranged = LoadoutSpec {
-        gear: gear(&[
-            ("Crystal helm", Some("Active")),
-            ("Ava's assembler", None),
-            ("Necklace of anguish", None),
-            ("Bow of faerdhinen", Some("Charged")),
-            ("Crystal body", Some("Active")),
-            ("Crystal legs", Some("Active")),
-            ("Barrows gloves", None),
-            ("Pegasian boots", None),
-            ("Ring of suffering (i)", Some("Recoil")),
-        ]),
+        gear: gear(&RANGED_GEAR),
         stats: BaseStats {
             attack: 90,
             strength: 92,
@@ -92,17 +136,7 @@ pub fn examples() -> Vec<Example> {
     };
 
     let magic = LoadoutSpec {
-        gear: gear(&[
-            ("Ancestral hat", None),
-            ("Imbued saradomin cape", None),
-            ("Occult necklace", None),
-            ("Tumeken's shadow", Some("Charged")),
-            ("Ancestral robe top", None),
-            ("Ancestral robe bottom", None),
-            ("Tormented bracelet", None),
-            ("Eternal boots", None),
-            ("Magus ring", None),
-        ]),
+        gear: gear(&MAGIC_GEAR),
         stats: BaseStats {
             prayer: 85,
             mining: 85,
@@ -118,14 +152,14 @@ pub fn examples() -> Vec<Example> {
     if let Some(dwh) = item("Dragon warhammer", None) {
         let mut step = SpecStep::new(1, dwh);
         step.switches = torva_switch.clone();
-        step.prayer = Some(Prayer::Piety);
+        step.prayers = vec![Prayer::Piety];
         magic_plan.steps.push(step);
     }
     if let Some(voidwaker) = item("Voidwaker", None) {
         let mut step = SpecStep::new(2, voidwaker);
         step.conditions = vec![SpecCondition::TargetHpBelow(150)];
         step.switches = torva_switch;
-        step.prayer = Some(Prayer::Piety);
+        step.prayers = vec![Prayer::Piety];
         magic_plan.steps.push(step);
     }
 
@@ -135,18 +169,21 @@ pub fn examples() -> Vec<Example> {
             loadout: melee,
             target: TargetConfig::example("General Graardor", 0, 0, 0),
             plan: melee_plan,
+            missing: missing_items(&[&MELEE_GEAR, &MELEE_SPECS]),
         },
         Example {
-            name: "Bowfa · 95 Ranged",
+            name: "Zaryte crossbow · 95 Ranged",
             loadout: ranged,
             target: TargetConfig::example("General Graardor", 0, 0, 40),
             plan: SpecPlan::default(),
+            missing: missing_items(&[&RANGED_GEAR]),
         },
         Example {
             name: "Shadow · DWH then Voidwaker",
             loadout: magic,
             target: TargetConfig::example("Zebak", 300, 2, 0),
             plan: magic_plan,
+            missing: missing_items(&[&MAGIC_GEAR, &MAGIC_SPECS, &SWITCH_GEAR]),
         },
     ]
 }
@@ -156,8 +193,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn examples_restore_without_warnings() {
+    fn examples_resolve_and_restore_cleanly() {
         for example in examples() {
+            assert!(
+                example.missing.is_empty(),
+                "{}: not in the equipment catalog: {:?}",
+                example.name,
+                example.missing
+            );
             let restored = example.loadout.to_player();
             assert!(
                 restored.warnings.is_empty(),
@@ -175,6 +218,11 @@ mod tests {
                 })
                 .count();
             assert_eq!(example.loadout.gear.len(), equipped, "{}", example.name);
+            assert_ne!(
+                restored.player.gear.weapon.name, "Unarmed",
+                "{} lost its weapon",
+                example.name
+            );
         }
     }
 }

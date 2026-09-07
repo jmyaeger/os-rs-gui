@@ -79,7 +79,7 @@ pub fn SkillSelect() -> Element {
             for skill in COMBAT_SKILLS.iter() {
                 SkillDisplay { skill: *skill }
             }
-
+        
         }
     }
 }

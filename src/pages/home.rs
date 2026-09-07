@@ -12,7 +12,7 @@ mod target;
 pub use state::{HomeState, initial_player};
 
 use dioxus::prelude::*;
-use loadout::{EquipmentPanel, PlayerPanel};
+use loadout::{BoostsPanel, EquipmentPanel, PlayerPanel};
 use metrics::MetricsStrip;
 use osrs::types::player::Player;
 use results::ResultsPanel;
@@ -39,18 +39,32 @@ pub fn Home() -> Element {
                 div { class: "home-toolbar-name",
                     span { class: "card-title", "Setup" }
                     input {
-                        class: "home-name-input", aria_label: "Setup name", placeholder: "Name this setup",
-                        value: "{state.name}", maxlength: "80",
+                        class: "home-name-input",
+                        aria_label: "Setup name",
+                        placeholder: "Name this setup",
+                        value: "{state.name}",
+                        maxlength: "80",
                         oninput: move |event| state.name.set(event.value()),
                     }
                     if let Some((index, unchanged)) = origin {
                         span { class: "home-muted home-toolbar-status",
-                            if unchanged { "Same as result {result_letter(index)}" } else { "Edited since result {result_letter(index)}" }
+                            if unchanged {
+                                "Same as result {result_letter(index)}"
+                            } else {
+                                "Edited since result {result_letter(index)}"
+                            }
                         }
                     }
                 }
                 div { class: "home-toolbar-actions",
-                    button { class: "home-button", onclick: move |_| { state.reset(&mut player); notice.set(String::new()); }, "New setup" }
+                    button {
+                        class: "home-button",
+                        onclick: move |_| {
+                            state.reset(&mut player);
+                            notice.set(String::new());
+                        },
+                        "New setup"
+                    }
                 }
             }
             if !warnings.is_empty() {
@@ -58,13 +72,28 @@ pub fn Home() -> Element {
             }
 
             div { class: "home-editor",
-                div { class: "home-editor-equipment", EquipmentPanel {} }
-                div { class: "home-editor-player", PlayerPanel {} }
-                div { class: "home-editor-target", TargetPanel { target: state.target, monster } }
-                div { class: "home-editor-strategy", StrategyPanel {} }
+                div { class: "home-editor-loadout",
+                    section {
+                        class: "card home-panel loadout-card",
+                        aria_label: "Loadout",
+                        header { class: "home-panel-header",
+                            h2 { class: "card-title", "Loadout" }
+                        }
+                        div { class: "loadout-columns",
+                            EquipmentPanel {}
+                            PlayerPanel {}
+                            BoostsPanel {}
+                        }
+                        MetricsStrip { monster }
+                    }
+                }
+                div { class: "home-editor-target",
+                    TargetPanel { target: state.target, monster }
+                }
+                div { class: "home-editor-strategy",
+                    StrategyPanel { monster }
+                }
             }
-
-            MetricsStrip { monster }
 
             div { class: "home-run-bar",
                 button {
@@ -72,32 +101,39 @@ pub fn Home() -> Element {
                     onclick: move |_| {
                         let id = state.add_result(&player.peek());
                         state.simulate_entry(id);
-                        let index = state.results.peek().iter().position(|entry| entry.id == id).unwrap_or(0);
+                        let index = state
+                            .results
+                            .peek()
+                            .iter()
+                            .position(|entry| entry.id == id)
+                            .unwrap_or(0);
                         notice.set(format!("Added result {} · simulating", result_letter(index)));
                     },
                     "Add & simulate"
                 }
                 label { class: "home-run-option",
                     span { "Trials" }
-                    select { class: "input-field", aria_label: "Simulation trials", value: "{state.sim.read().trials}",
-                        onchange: move |event| { if let Ok(value) = event.value().parse::<u32>() { state.sim.write().trials = value; } },
+                    select {
+                        class: "input-field",
+                        aria_label: "Simulation trials",
+                        value: "{state.sim.read().trials}",
+                        onchange: move |event| {
+                            if let Ok(value) = event.value().parse::<u32>() {
+                                state.sim.write().trials = value;
+                            }
+                        },
                         for trials in TRIAL_CHOICES {
-                            option { value: "{trials}", selected: trials == state.sim.read().trials, "{trials / 1000}k" }
+                            option {
+                                value: "{trials}",
+                                selected: trials == state.sim.read().trials,
+                                "{trials / 1000}k"
+                            }
                         }
                     }
                 }
-                button { class: "home-text-button",
-                    onclick: move |_| {
-                        let id = state.add_result(&player.peek());
-                        let index = state.results.peek().iter().position(|entry| entry.id == id).unwrap_or(0);
-                        notice.set(format!("Added result {} without simulating", result_letter(index)));
-                    },
-                    "Add without simulating"
+                if !notice.read().is_empty() {
+                    span { class: "home-notice", role: "status", "{notice}" }
                 }
-                span { class: "home-muted",
-                    "The simulation includes special attacks and thralls. The live numbers above are main weapon only."
-                }
-                if !notice.read().is_empty() { span { class: "home-notice", role: "status", "{notice}" } }
             }
 
             ResultsPanel {}

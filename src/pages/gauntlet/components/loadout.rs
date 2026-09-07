@@ -285,7 +285,10 @@ pub fn LoadoutCard(
                 if selected_weapon().is_some() {
                     div {
                         label { class: "text-xs text-gray-400", "Attack Style" }
-                        AttackStyleSelect { style: current_style.unwrap(), weapon: selected_weapon }
+                        AttackStyleSelect {
+                            style: current_style.unwrap(),
+                            weapon: selected_weapon,
+                        }
                     }
                 }
 
@@ -295,7 +298,7 @@ pub fn LoadoutCard(
                     PrayerSelect { style: current_style.unwrap() }
                 }
             }
-
+        
         }
     }
 }

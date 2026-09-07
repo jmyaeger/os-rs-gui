@@ -2,38 +2,32 @@ use crate::components::equipment_slot::EquipmentGridSlot;
 use dioxus::prelude::*;
 use osrs::types::equipment::GearSlot;
 
+/// Paperdoll positions: (slot, row, column) in a 3x5 grid. Spacing is owned by
+/// the page stylesheet so the grid can be tightened without touching Tailwind.
+const GRID: [(GearSlot, u8, u8); 11] = [
+    (GearSlot::Head, 1, 2),
+    (GearSlot::Cape, 2, 1),
+    (GearSlot::Neck, 2, 2),
+    (GearSlot::Ammo, 2, 3),
+    (GearSlot::Weapon, 3, 1),
+    (GearSlot::Body, 3, 2),
+    (GearSlot::Shield, 3, 3),
+    (GearSlot::Legs, 4, 2),
+    (GearSlot::Hands, 5, 1),
+    (GearSlot::Feet, 5, 2),
+    (GearSlot::Ring, 5, 3),
+];
+
 #[component]
 pub fn EquipmentGrid() -> Element {
     rsx! {
-        div {
-            class: "panel-elevated p-6 w-full mx-auto",
-            div {
-                class: "space-y-3",
+        div { class: "equipment-paperdoll",
+            for (slot, row, column) in GRID {
                 div {
-                    class: "flex justify-center",
-                    EquipmentGridSlot { slot_type: GearSlot::Head }
-                }
-                div {
-                    class: "flex justify-center gap-2",
-                    EquipmentGridSlot { slot_type: GearSlot::Cape }
-                    EquipmentGridSlot { slot_type: GearSlot::Neck }
-                    EquipmentGridSlot { slot_type: GearSlot::Ammo }
-                }
-                div {
-                    class: "flex justify-center gap-6",
-                    EquipmentGridSlot { slot_type: GearSlot::Weapon }
-                    EquipmentGridSlot { slot_type: GearSlot::Body }
-                    EquipmentGridSlot { slot_type: GearSlot::Shield }
-                }
-                div {
-                    class: "flex justify-center",
-                    EquipmentGridSlot { slot_type: GearSlot::Legs }
-                }
-                div {
-                    class: "flex justify-center gap-6",
-                    EquipmentGridSlot { slot_type: GearSlot::Hands }
-                    EquipmentGridSlot { slot_type: GearSlot::Feet }
-                    EquipmentGridSlot { slot_type: GearSlot::Ring }
+                    key: "{slot}",
+                    class: "equipment-paperdoll-cell",
+                    style: "grid-row: {row}; grid-column: {column}",
+                    EquipmentGridSlot { slot_type: slot }
                 }
             }
         }

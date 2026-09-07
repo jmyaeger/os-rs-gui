@@ -1,10 +1,13 @@
 //! Cheap engine calculations for the main weapon: rolls, DPS, and expected TTK.
 
 use dioxus::prelude::*;
-use osrs::calc::dps_calc::{get_distribution, get_dps, get_ttk, get_ttk_distribution};
+use osrs::calc::dps_calc::{
+    get_distribution, get_dps, get_expected_damage, get_hit_chance, get_ttk, get_ttk_distribution,
+};
 use osrs::calc::hit_dist::AttackDistribution;
 use osrs::calc::rolls::calc_active_player_rolls;
 use osrs::constants::{SECONDS_PER_TICK, USES_OWN_AMMO};
+use osrs::error::DpsCalcError;
 use osrs::types::equipment::{CombatStance, CombatType};
 use osrs::types::monster::Monster;
 use osrs::types::player::Player;
@@ -23,11 +26,98 @@ pub struct CombatMetrics {
     pub max_hit: u32,
     pub attack_roll: i32,
     pub defence_roll: i32,
-    /// Expected interval between attacks, in seconds.
-    pub attack_interval: f64,
+    /// Expected damage from one attack, averaged over hits and misses.
+    #[serde(default)]
+    pub expected_hit: f64,
     /// Expected time to kill with the main weapon only, in seconds.
     #[serde(default)]
     pub expected_ttk: Option<f64>,
+}
+
+/// What one use of a special attack does against the target's starting state.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpecMetrics {
+    pub dps: f64,
+    pub accuracy: f64,
+    pub max_hit: u32,
+    pub expected_hit: f64,
+    pub attack_roll: i32,
+    pub defence_roll: i32,
+    /// This special attack bypasses the accuracy roll, so the rolls below do not
+    /// decide the outcome and are not worth showing.
+    pub always_hits: bool,
+}
+
+/// The engine multiplies the attack roll by a per-weapon factor for special
+/// attacks, inside the private `dps_calc::get_normal_accuracy`. This mirrors that
+/// table so the roll can be displayed; `spec_attack_roll_matches_engine_accuracy`
+/// fails if the two drift apart.
+fn spec_attack_factor(player: &Player) -> (i32, i32) {
+    match player.gear.weapon.name.as_str() {
+        "Saradomin godsword" | "Bandos godsword" | "Zamorak godsword" | "Armadyl godsword"
+        | "Zaryte crossbow" | "Webweaver bow" | "Toxic blowpipe" | "Ancient godsword"
+        | "Brine sabre" | "Barrelchest anchor" | "Eye of ayak" => (2, 1),
+        "Accursed sceptre"
+        | "Accursed sceptre (a)"
+        | "Volatile nightmare staff"
+        | "Arkan blade"
+        | "Granite hammer" => (3, 2),
+        "Dragon dagger" => (115, 100),
+        "Abyssal dagger" | "Abyssal whip" | "Dragon mace" | "Dragon sword" | "Elder maul" => (5, 4),
+        "Soulreaper axe" => (100 + 6 * player.boosts.soulreaper_stacks as i32, 100),
+        "Magic shortbow" | "Magic shortbow (i)" => (10, 7),
+        "Heavy ballista" | "Light ballista" => (5, 4),
+        "Rosewood blowpipe" => (4, 5),
+        _ => (1, 1),
+    }
+}
+
+/// One use of `player`'s special attack against `monster`. `defence_type` is the
+/// combat type the spec rolls against, which most weapons fix regardless of style.
+pub fn spec_metrics(
+    player: &Player,
+    monster: &Monster,
+    defence_type: CombatType,
+) -> Result<SpecMetrics, String> {
+    let mut player = player.clone();
+    player.update_bonuses();
+    player.update_set_effects();
+    calc_active_player_rolls(&mut player, monster);
+    let distribution = get_distribution(&player, monster, true).map_err(|error| match error {
+        DpsCalcError::SpecNotImplemented(_) => {
+            "No formula for this special attack yet — the simulation still models it.".to_string()
+        }
+        other => format!("The engine could not build this special attack: {other:?}"),
+    })?;
+    let accuracy = get_hit_chance(&player, monster, true)
+        .map_err(|error| format!("Error calculating the hit chance: {error:?}."))?;
+    let combat_type = player.combat_type();
+    let base_roll = player
+        .att_rolls
+        .get(combat_type)
+        .map_err(|error| format!("{error:?}"))?;
+    let (numerator, denominator) = spec_attack_factor(&player);
+    let mut attack_roll = numerator * base_roll / denominator;
+    if player.is_wearing("Keris partisan of the sun", None)
+        && monster.is_toa_monster()
+        && monster.stats.hitpoints.current < monster.stats.hitpoints.base / 4
+    {
+        attack_roll = attack_roll * 5 / 4;
+    }
+    let expected_hit = get_expected_damage(&distribution, &player, monster, true)
+        .map_err(|error| format!("Error calculating expected hit: {error:?}"))?;
+    let dps = get_dps(&distribution, &player, monster, true)
+        .map_err(|error| format!("Error calculating DPS: {error:?}"))?;
+
+    Ok(SpecMetrics {
+        always_hits: player.is_wearing_any(osrs::constants::ALWAYS_HITS_SPEC),
+        dps,
+        accuracy: accuracy.clamp(0.0, 1.0),
+        max_hit: distribution.get_max(),
+        expected_hit,
+        attack_roll,
+        defence_roll: monster.def_rolls.get(defence_type),
+    })
 }
 
 /// Time-to-kill distribution for one result, in ticks.
@@ -144,38 +234,11 @@ pub fn calculate_against(player: &Player, monster: &Monster) -> Result<CombatMet
         player,
         distribution,
     } = prepare(player, monster)?;
-    let first_hit = distribution
-        .dists
-        .first()
-        .ok_or("Engine returned an empty distribution")?;
-    let accuracy: f64 = first_hit
-        .hits
-        .iter()
-        .filter(|hit| hit.hitsplats.first().is_some_and(|splat| splat.accurate))
-        .map(|hit| hit.probability)
-        .sum();
-
-    let mut attack_interval = player.gear.weapon.speed as f64 * SECONDS_PER_TICK;
-    if player.set_effects.full_blood_moon {
-        // Only this set needs the library's probabilistic-delay calculation.
-        let immediate_damage = distribution.get_expected_damage();
-        let immediate_dps = get_dps(&distribution, &player, false);
-        if immediate_damage > 0.0 && immediate_dps > 0.0 {
-            attack_interval = immediate_damage / immediate_dps;
-        }
-    }
+    let accuracy = get_hit_chance(&player, monster, false)
+        .map_err(|error| format!("Error calculating the hit chance: {error:?}."))?;
     let expected_damage = distribution.get_expected_damage();
-    let dps = expected_damage / attack_interval;
-    if !dps.is_finite()
-        || dps < 0.0
-        || !attack_interval.is_finite()
-        || attack_interval <= 0.0
-        || !accuracy.is_finite()
-        || !(-1e-9..=1.0 + 1e-9).contains(&accuracy)
-    {
-        return Err("Engine returned an invalid result".into());
-    }
-
+    let dps = get_dps(&distribution, &player, monster, false)
+        .map_err(|error| format!("Error calculating DPS: {error:?}"))?;
     let combat_type = player.combat_type();
     let mut attack_roll = player
         .att_rolls
@@ -196,11 +259,11 @@ pub fn calculate_against(player: &Player, monster: &Monster) -> Result<CombatMet
     };
     Ok(CombatMetrics {
         dps,
+        expected_hit: expected_damage,
         accuracy: accuracy.clamp(0.0, 1.0),
         max_hit: distribution.get_max(),
         attack_roll,
         defence_roll: monster.def_rolls.get(combat_type),
-        attack_interval,
         expected_ttk,
     })
 }
@@ -316,15 +379,11 @@ fn has_required_ammunition(player: &Player) -> bool {
 }
 
 pub fn format_seconds(seconds: f64) -> String {
-    if seconds >= 100.0 {
-        format!("{seconds:.0}")
-    } else {
-        format!("{seconds:.1}")
-    }
+    format!("{seconds:.2}")
 }
 
-/// Live read-out of the current editor state. Spans the editor so it reads as
-/// the output of the whole configuration rather than of one panel.
+/// Live read-out of the current editor state, shown at the foot of the Loadout
+/// card. Deliberately excludes anything the simulation is responsible for.
 #[component]
 pub fn MetricsStrip(monster: ReadSignal<Option<Monster>>) -> Element {
     let player = use_context::<Signal<Player>>();
@@ -335,25 +394,47 @@ pub fn MetricsStrip(monster: ReadSignal<Option<Monster>>) -> Element {
 
     rsx! {
         section {
-            class: "card metrics-strip",
-            aria_label: "Live main-weapon combat metrics",
-            div { class: "metrics-strip-heading",
-                span { class: "card-title", "Main weapon" }
-                span { class: "home-muted", "Against the target's starting state. Special attacks are not included." }
+            class: "metrics-strip",
+            aria_label: "Calculated main-weapon stats",
+            p { class: "metrics-note",
+                "Main weapon against the target's starting state. Special attacks, thralls and burn are not included."
             }
             match &*metrics.read() {
                 Ok(metrics) => rsx! {
                     dl { class: "metrics-grid",
-                        MetricTile { label: "Expected TTK", value: metrics.expected_ttk.map(format_seconds).unwrap_or_else(|| "—".into()), unit: "s", emphasis: true, help: "Expected time to kill with the main weapon only." }
-                        MetricTile { label: "DPS", value: format!("{:.2}", metrics.dps), help: "Immediate damage per second, including procs and multi-hit attacks. Excludes delayed burns and poison." }
-                        MetricTile { label: "Accuracy", value: format!("{:.1}", metrics.accuracy * 100.0), unit: "%", help: "First hitsplat accuracy, including successful zero-damage hits." }
-                        MetricTile { label: "Max hit", value: metrics.max_hit.to_string(), help: "Maximum combined immediate damage across all hitsplats in one attack." }
+                        MetricTile {
+                            label: "DPS",
+                            value: format!("{:.2}", metrics.dps),
+                            emphasis: true,
+                            help: "Immediate damage per second, including procs and multi-hit attacks. Excludes delayed burns and poison.",
+                        }
+                        MetricTile {
+                            label: "Expected hit",
+                            value: format!("{:.2}", metrics.expected_hit),
+                            help: "Average damage per attack across hits and misses.",
+                        }
+                        MetricTile {
+                            label: "Max hit",
+                            value: metrics.max_hit.to_string(),
+                            help: "Maximum combined damage across all hitsplats in one attack.",
+                        }
+                        MetricTile {
+                            label: "Accuracy",
+                            value: format!("{:.2}", metrics.accuracy * 100.0),
+                            unit: "%",
+                            help: "First hitsplat accuracy, including successful zero-damage hits.",
+                        }
                         MetricTile { label: "Attack roll", value: metrics.attack_roll.to_string() }
-                        MetricTile { label: "Defence roll", value: metrics.defence_roll.to_string(), help: "Target defence roll against the selected combat style." }
-                        MetricTile { label: "Interval", value: format!("{:.1}", metrics.attack_interval), unit: "s", help: "Expected time between attacks." }
+                        MetricTile {
+                            label: "Defence roll",
+                            value: metrics.defence_roll.to_string(),
+                            help: "Target defence roll against the selected combat style.",
+                        }
                     }
                 },
-                Err(reason) => rsx! { p { class: "metrics-empty", "{reason}" } },
+                Err(reason) => rsx! {
+                    p { class: "metrics-empty", "{reason}" }
+                },
             }
         }
     }
@@ -368,9 +449,16 @@ fn MetricTile(
     #[props(default = "")] help: &'static str,
 ) -> Element {
     rsx! {
-        div { class: if emphasis { "metric-tile is-emphasis" } else { "metric-tile" }, title: "{help}",
+        div {
+            class: if emphasis { "metric-tile is-emphasis" } else { "metric-tile" },
+            title: "{help}",
             dt { "{label}" }
-            dd { class: "num", "{value}", if !unit.is_empty() { small { "{unit}" } } }
+            dd { class: "num",
+                "{value}"
+                if !unit.is_empty() {
+                    small { "{unit}" }
+                }
+            }
         }
     }
 }

@@ -183,6 +183,9 @@ pub struct HomeState {
     pub warnings: Signal<Vec<String>>,
     /// Simulations in flight, by result id.
     pub sim_status: Signal<HashMap<u32, SimStatus>>,
+    /// Result the comparison deltas are measured against. Falls back to the
+    /// first result sharing a monster when unset.
+    pub baseline: Signal<Option<u32>>,
 }
 
 impl HomeState {
@@ -206,6 +209,7 @@ impl HomeState {
             loaded_from: Signal::new(draft.loaded_from),
             warnings: Signal::new(Vec::new()),
             sim_status: Signal::new(HashMap::new()),
+            baseline: Signal::new(None),
         }
     }
 
@@ -275,9 +279,19 @@ impl HomeState {
         id
     }
 
+    /// Rename a result in place, without loading it into the editor.
+    pub fn rename_result(&mut self, id: u32, name: String) {
+        if let Some(entry) = self.results.write().iter_mut().find(|entry| entry.id == id) {
+            entry.name = name;
+        }
+    }
+
     pub fn remove_result(&mut self, id: u32) {
         self.results.write().retain(|entry| entry.id != id);
         self.sim_status.write().remove(&id);
+        if *self.baseline.peek() == Some(id) {
+            self.baseline.set(None);
+        }
         if *self.loaded_from.peek() == Some(id) {
             self.loaded_from.set(None);
         }
@@ -287,6 +301,7 @@ impl HomeState {
         crate::worker::cancel_jobs();
         self.results.set(Vec::new());
         self.sim_status.set(HashMap::new());
+        self.baseline.set(None);
         self.loaded_from.set(None);
     }
 

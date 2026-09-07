@@ -21,8 +21,13 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
     } else {
         format!("{slot_type}: Empty")
     };
+    let tooltip = if equipped {
+        item_name.to_string()
+    } else {
+        format!("{slot_type}")
+    };
     let button_class = format!(
-        "equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] {}",
+        "equipment-slot equipment-slot-bg flex justify-center items-center h-[40px] w-[40px] {}",
         if equipped {
             "cursor-pointer"
         } else {
@@ -34,7 +39,6 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
         button {
             "type": "button",
             class: "{button_class}",
-            title: "{item_name}",
             aria_label: "{slot_label}",
             disabled: !can_remove,
             onclick: move |_| {
@@ -65,6 +69,7 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                     }
                 }
             }
+            span { class: "slot-tooltip", role: "tooltip", "{tooltip}" }
         }
     }
 }

@@ -1,21 +1,26 @@
-//! Equipment and player panels of the editor.
+//! Equipment and player halves of the Loadout card.
 
 use super::HomeState;
 use super::examples::examples;
 use super::simulation::ThrallChoice;
-use super::spec::{Conditions, OFFENSIVE_PRAYERS, SLOTS, active_potions, all_spells};
+use super::spec::{Conditions, SLOTS, active_potions, all_spells};
 use crate::components::{EquipmentGrid, EquipmentSelect, PrayerSelect, ensure_style};
 use crate::hiscores::fetch_player_stats;
 use dioxus::prelude::*;
-use osrs::types::equipment::{CombatStance, CombatStyle, GearSlot};
+use osrs::types::equipment::{CombatStance, CombatStyle};
 use osrs::types::player::Player;
 use osrs::types::potions::Potion;
+use osrs::types::spells::Spell;
 use osrs::types::stats::Stat;
 use strum::IntoEnumIterator;
+
+/// Styles that cast the selected spell rather than the weapon's own attack.
+const AUTOCAST_STYLES: [CombatStyle; 2] = [CombatStyle::Spell, CombatStyle::DefensiveSpell];
 
 #[component]
 pub fn EquipmentPanel() -> Element {
     let mut player = use_context::<Signal<Player>>();
+    let state = use_context::<HomeState>();
     let mut styles: Vec<_> = player
         .read()
         .gear
@@ -41,45 +46,39 @@ pub fn EquipmentPanel() -> Element {
         .map(|option| format!("{} · {}", option.combat_type, stance_label(option.stance)))
         .unwrap_or_else(|| "Choose an attack style".to_string());
     let speed = player.read().gear.weapon.speed;
-    let casting = matches!(
-        active_style,
-        CombatStyle::Spell | CombatStyle::DefensiveSpell | CombatStyle::ManualCast
-    );
-    let spell_name = player
-        .read()
-        .attrs
-        .spell
-        .map(|spell| spell.to_string())
-        .unwrap_or_default();
+    // Only weapons that carry an autocast style can cast a spell at all.
+    let can_autocast = AUTOCAST_STYLES
+        .iter()
+        .any(|style| player.read().gear.weapon.combat_styles.contains_key(style));
+    let spell = player.read().attrs.spell;
+    let spell_name = spell.map(|spell| spell.to_string()).unwrap_or_default();
+    let boosts = Conditions::from_boosts(&player.read().boosts);
+    let soulreaper = player.read().is_wearing("Soulreaper axe", None);
 
     rsx! {
-        section { class: "card home-panel loadout-equipment",
-            header { class: "home-panel-header",
-                h2 { class: "card-title", "Equipment" }
-                div { class: "home-panel-actions",
-                    if empty {
-                        button { class: "home-text-button",
-                            onclick: move |_| {
-                                if let Some(example) = examples().into_iter().next() {
-                                    let restored = example.loadout.to_player();
-                                    player.set(restored.player);
-                                }
-                            },
-                            "Load example gear"
-                        }
-                    } else {
-                        button { class: "home-text-button",
-                            onclick: move |_| {
-                                let mut player = player.write();
-                                for slot in SLOTS {
-                                    if slot != GearSlot::Weapon {
-                                        player.unequip_slot(&slot);
-                                    }
-                                }
-                                player.unequip_slot(&GearSlot::Weapon);
-                            },
-                            "Clear"
-                        }
+        div { class: "loadout-column loadout-equipment",
+            div { class: "loadout-column-header",
+                h3 { "Equipment" }
+                if empty {
+                    button {
+                        class: "home-text-button",
+                        onclick: move |_| {
+                            if let Some(example) = examples().into_iter().next() {
+                                player.set(example.loadout.to_player().player);
+                            }
+                        },
+                        "Load example gear"
+                    }
+                } else {
+                    button {
+                        class: "home-text-button",
+                        onclick: move |_| {
+                            let mut player = player.write();
+                            for slot in SLOTS {
+                                player.unequip_slot(&slot);
+                            }
+                        },
+                        "Clear"
                     }
                 }
             }
@@ -95,7 +94,10 @@ pub fn EquipmentPanel() -> Element {
                     class: "input-field",
                     value: "{active_style}",
                     onchange: move |event| {
-                        if let Some(style) = styles.iter().find(|style| style.to_string() == event.value()) {
+                        if let Some(style) = styles
+                            .iter()
+                            .find(|style| style.to_string() == event.value())
+                        {
                             player.write().set_active_style(*style);
                         }
                     },
@@ -108,7 +110,7 @@ pub fn EquipmentPanel() -> Element {
                 span { "{style_details}" }
                 span { class: "num", "{speed}-tick" }
             }
-            if casting || !spell_name.is_empty() {
+            if can_autocast {
                 div { class: "loadout-style-row",
                     label { r#for: "loadout-spell", "Spell" }
                     select {
@@ -116,17 +118,65 @@ pub fn EquipmentPanel() -> Element {
                         class: "input-field",
                         value: "{spell_name}",
                         onchange: move |event| {
-                            let spell = all_spells().into_iter().find(|spell| spell.to_string() == event.value());
+                            let chosen = all_spells()
+                                .into_iter()
+                                .find(|spell| spell.to_string() == event.value());
                             let mut current = player.write();
-                            current.attrs.spell = spell;
+                            current.attrs.spell = chosen;
                             ensure_style(&mut current);
                         },
-                        option { value: "", "Select a spell" }
-                        for spell in all_spells() {
-                            option { value: "{spell}", "{spell}" }
+                        option { value: "", selected: spell.is_none(), "No spell" }
+                        for option in all_spells() {
+                            option {
+                                value: "{option}",
+                                selected: spell == Some(option),
+                                "{option}"
+                            }
                         }
                     }
                 }
+                // Spell-specific boosts live beside the spell that enables them.
+                if matches!(spell, Some(Spell::Standard(_))) {
+                    ConditionToggle {
+                        label: "Sunfire runes",
+                        enabled: boosts.sunfire,
+                        on_change: move |checked| player.write().boosts.sunfire.active = checked,
+                    }
+                }
+                if matches!(spell, Some(Spell::Arceuus(_))) {
+                    ConditionToggle {
+                        label: "Mark of Darkness",
+                        enabled: boosts.mark_of_darkness,
+                        on_change: move |checked| player.write().boosts.mark_of_darkness = checked,
+                    }
+                }
+            }
+            if soulreaper {
+                label { class: "loadout-inline-field",
+                    span { "Soulreaper stacks" }
+                    input {
+                        class: "input-field num",
+                        r#type: "number",
+                        min: "0",
+                        max: "5",
+                        value: "{boosts.soulreaper_stacks}",
+                        oninput: move |event| {
+                            if let Ok(stacks) = event.value().parse::<u32>() {
+                                player.write().boosts.soulreaper_stacks = stacks.min(5);
+                            }
+                        },
+                    }
+                }
+            }
+            if !can_autocast && spell.is_some() {
+                button {
+                    class: "home-text-button loadout-clear-spell",
+                    onclick: move |_| player.write().attrs.spell = None,
+                    "Clear stored spell ({spell_name})"
+                }
+            }
+            if state.sim.read().thrall.is_some() {
+                p { class: "home-muted", "Thralls apply to simulations only." }
             }
         }
     }
@@ -137,28 +187,33 @@ fn EquipmentBonuses() -> Element {
     let player = use_context::<Signal<Player>>();
     let bonuses = player.read().bonuses.clone();
     let styles = [
-        ("Stab", "dagger", bonuses.attack.stab, bonuses.defence.stab),
+        (
+            "Stab",
+            "dagger.png",
+            bonuses.attack.stab,
+            bonuses.defence.stab,
+        ),
         (
             "Slash",
-            "scimitar",
+            "scimitar.png",
             bonuses.attack.slash,
             bonuses.defence.slash,
         ),
         (
             "Crush",
-            "warhammer",
+            "warhammer.png",
             bonuses.attack.crush,
             bonuses.defence.crush,
         ),
         (
             "Range",
-            "ranged",
+            "ranged.png",
             bonuses.attack.ranged,
             bonuses.defence.ranged,
         ),
         (
             "Magic",
-            "magic",
+            "magic.png",
             bonuses.attack.magic,
             bonuses.defence.magic,
         ),
@@ -166,20 +221,20 @@ fn EquipmentBonuses() -> Element {
     let other = [
         (
             "Melee str.",
-            "strength",
+            "strength.png",
             format!("{:+}", bonuses.strength.melee),
         ),
         (
             "Range str.",
-            "ranged_strength",
+            "ranged_strength.png",
             format!("{:+}", bonuses.strength.ranged),
         ),
         (
             "Magic dmg.",
-            "magic_strength",
+            "magic_strength.png",
             format!("{:+}%", bonuses.strength.magic),
         ),
-        ("Prayer", "prayer", format!("{:+}", bonuses.prayer)),
+        ("Prayer", "prayer.png", format!("{:+}", bonuses.prayer)),
     ];
     rsx! {
         div { class: "loadout-bonuses",
@@ -192,10 +247,13 @@ fn EquipmentBonuses() -> Element {
                     }
                 }
                 tbody {
-                    for (label, icon, attack, defence) in styles {
+                    for (label , icon , attack , defence) in styles {
                         tr { key: "{label}",
                             th { scope: "row",
-                                img { src: format!("{}/{icon}.png", crate::BONUSES_ASSETS), alt: "" }
+                                img {
+                                    src: format!("{}/{icon}", crate::BONUSES_ASSETS),
+                                    alt: "",
+                                }
                                 "{label}"
                             }
                             td { class: "num", "{attack:+}" }
@@ -205,10 +263,13 @@ fn EquipmentBonuses() -> Element {
                 }
             }
             dl { class: "loadout-other-bonuses",
-                for (label, icon, value) in other {
+                for (label , icon , value) in other {
                     div { key: "{label}",
                         dt {
-                            img { src: format!("{}/{icon}.png", crate::BONUSES_ASSETS), alt: "" }
+                            img {
+                                src: format!("{}/{icon}", crate::BONUSES_ASSETS),
+                                alt: "",
+                            }
                             "{label}"
                         }
                         dd { class: "num", "{value}" }
@@ -221,141 +282,132 @@ fn EquipmentBonuses() -> Element {
 
 #[component]
 pub fn PlayerPanel() -> Element {
-    let mut player = use_context::<Signal<Player>>();
-    let mut state = use_context::<HomeState>();
-    let thrall = state.sim.read().thrall;
-    let mut show_import = use_signal(|| false);
-    let mut show_more = use_signal(|| false);
-    let prayers: Vec<_> = OFFENSIVE_PRAYERS
-        .iter()
-        .copied()
-        .filter(|prayer| player.read().prayers.contains_prayer(*prayer))
-        .collect();
-    let potions = active_potions(&player.read());
-    let available_potions: Vec<_> = Potion::iter()
-        .filter(|potion| *potion != Potion::None && !potions.contains(potion))
-        .collect();
-    let conditions = Conditions::from_boosts(&player.read().boosts);
-    let more_active = conditions.in_multi
-        || conditions.forinthry_surge
-        || conditions.charge_active
-        || conditions.mark_of_darkness
-        || conditions.sunfire
-        || conditions.soulreaper_stacks > 0
-        || thrall.is_some();
-
     rsx! {
-        section { class: "card home-panel loadout-player",
-            header { class: "home-panel-header",
-                h2 { class: "card-title", "Player" }
-                div { class: "home-panel-actions",
-                    button {
-                        class: "home-text-button",
-                        aria_expanded: "{show_import}",
-                        onclick: move |_| show_import.toggle(),
-                        "Import stats"
-                    }
-                }
-            }
-            if show_import() { HiscoreImport {} }
-            div { class: "loadout-section-heading",
-                h3 { "Stats" }
+        div { class: "loadout-column loadout-player",
+            div { class: "loadout-column-header",
+                h3 { "Player" }
                 span { class: "home-muted", "base → boosted" }
             }
+            HiscoreImport {}
             div { class: "loadout-stats-grid",
                 for skill in SKILLS {
                     SkillField { key: "{skill.name()}", skill }
                 }
             }
-            div { class: "loadout-boosts",
-                div { class: "loadout-prayers",
-                    div { class: "loadout-section-heading", h3 { "Prayers" } }
-                    PrayerSelect { show_header: false }
-                    p { class: "loadout-prayer-summary",
-                        if prayers.is_empty() { "None" }
-                        else { "{prayers.iter().map(ToString::to_string).collect::<Vec<_>>().join(\", \")}" }
+            div { class: "loadout-section-heading",
+                h3 { "Prayers" }
+            }
+            PrayerSelect { show_header: false }
+        }
+    }
+}
+
+/// Potions, situational boosts and the thrall choice. Sits under Equipment so
+/// the two halves of the Loadout card stay a similar height.
+#[component]
+pub fn BoostsPanel() -> Element {
+    let mut player = use_context::<Signal<Player>>();
+    let mut state = use_context::<HomeState>();
+    let thrall = state.sim.read().thrall;
+    let potions = active_potions(&player.read());
+    let available_potions: Vec<_> = Potion::iter()
+        .filter(|potion| *potion != Potion::None && !potions.contains(potion))
+        .collect();
+    let conditions = Conditions::from_boosts(&player.read().boosts);
+
+    rsx! {
+        div { class: "loadout-column loadout-boosts",
+            div { class: "loadout-column-header",
+                h3 { "Potions" }
+                select {
+                    key: "add-potion-{potions.len()}",
+                    class: "home-add-select",
+                    aria_label: "Add potion or boost",
+                    value: "",
+                    onchange: move |event| {
+                        if let Some(potion) = Potion::iter()
+                            .find(|potion| potion.to_string() == event.value()) && potion != Potion::None
+                            && !active_potions(&player.read()).contains(&potion)
+                        {
+                            player.write().add_potion(potion);
+                        }
+                    },
+                    option { value: "", "+ Add" }
+                    for potion in available_potions {
+                        option { value: "{potion}", "{potion}" }
                     }
                 }
-                div { class: "loadout-consumables",
-                    div { class: "loadout-section-heading",
-                        h3 { "Potions" }
-                        select {
-                            key: "add-potion-{potions.len()}",
-                            class: "home-add-select",
-                            aria_label: "Add potion or boost",
-                            value: "",
-                            onchange: move |event| {
-                                if let Some(potion) = Potion::iter().find(|potion| potion.to_string() == event.value())
-                                    && potion != Potion::None
-                                    && !active_potions(&player.read()).contains(&potion)
-                                {
-                                    player.write().add_potion(potion);
-                                }
-                            },
-                            option { value: "", "+ Add" }
-                            for potion in available_potions {
-                                option { value: "{potion}", "{potion}" }
-                            }
+            }
+            div { class: "loadout-chips",
+                if potions.is_empty() {
+                    span { class: "home-muted", "None" }
+                }
+                for potion in potions {
+                    button {
+                        class: "home-chip is-removable",
+                        aria_label: "Remove {potion}",
+                        onclick: move |_| player.write().remove_potion(potion),
+                        img {
+                            src: format!(
+                                "{}/{}.png",
+                                crate::POTIONS_ASSETS,
+                                potion.to_string().replace(" (-)", "").replace(" (+)", ""),
+                            ),
+                            alt: "",
                         }
+                        "{potion}"
+                        span { class: "home-chip-remove", "×" }
                     }
-                    div { class: "loadout-chips",
-                        if potions.is_empty() { span { class: "home-muted", "None" } }
-                        for potion in potions {
-                            button {
-                                class: "home-chip is-removable",
-                                aria_label: "Remove {potion}",
-                                onclick: move |_| player.write().remove_potion(potion),
-                                img { src: format!("{}/{}.png", crate::POTIONS_ASSETS, potion.to_string().replace(" (-)", "").replace(" (+)", "")), alt: "" }
-                                "{potion}"
-                                span { class: "home-chip-remove", "×" }
-                            }
-                        }
-                    }
-                    div { class: "loadout-section-heading loadout-conditions-heading",
-                        h3 { "Conditions" }
-                        button {
-                            class: "home-text-button",
-                            aria_expanded: "{show_more}",
-                            onclick: move |_| show_more.toggle(),
-                            if show_more() { "Fewer" } else if more_active { "More (active)" } else { "More" }
-                        }
-                    }
-                    div { class: "loadout-conditions",
-                        ConditionToggle { label: "Slayer task", enabled: conditions.on_task, on_change: move |checked| player.write().boosts.on_task = checked }
-                        ConditionToggle { label: "Wilderness", enabled: conditions.in_wilderness, on_change: move |checked| player.write().boosts.in_wilderness = checked }
-                        ConditionToggle { label: "Kandarin hard diary", enabled: conditions.kandarin_diary, on_change: move |checked| player.write().boosts.kandarin_diary = checked }
-                        if show_more() {
-                            ConditionToggle { label: "Multicombat", enabled: conditions.in_multi, on_change: move |checked| player.write().boosts.in_multi = checked }
-                            ConditionToggle { label: "Forinthry surge", enabled: conditions.forinthry_surge, on_change: move |checked| player.write().boosts.forinthry_surge = checked }
-                            ConditionToggle { label: "Charge spell", enabled: conditions.charge_active, on_change: move |checked| player.write().boosts.charge_active = checked }
-                            ConditionToggle { label: "Mark of Darkness", enabled: conditions.mark_of_darkness, on_change: move |checked| player.write().boosts.mark_of_darkness = checked }
-                            ConditionToggle { label: "Sunfire runes", enabled: conditions.sunfire, on_change: move |checked| player.write().boosts.sunfire.active = checked }
-                            label { class: "loadout-stack-field",
-                                span { "Thrall" }
-                                select {
-                                    class: "input-field",
-                                    value: thrall.map(ThrallChoice::key).unwrap_or(""),
-                                    title: "Thralls only affect simulations, not the live main-weapon numbers",
-                                    onchange: move |event| state.sim.write().thrall = ThrallChoice::from_key(&event.value()),
-                                    option { value: "", selected: thrall.is_none(), "None" }
-                                    for choice in ThrallChoice::ALL {
-                                        option { value: choice.key(), selected: thrall == Some(choice), "{choice.label()}" }
-                                    }
-                                }
-                            }
-                            label { class: "loadout-stack-field",
-                                span { "Soulreaper stacks" }
-                                input {
-                                    class: "input-field num",
-                                    r#type: "number", min: "0", max: "5",
-                                    value: "{conditions.soulreaper_stacks}",
-                                    oninput: move |event| {
-                                        if let Ok(stacks) = event.value().parse::<u32>() {
-                                            player.write().boosts.soulreaper_stacks = stacks.min(5);
-                                        }
-                                    },
-                                }
-                            }
+                }
+            }
+            div { class: "loadout-section-heading",
+                h3 { "Conditions" }
+            }
+            div { class: "loadout-conditions",
+                ConditionToggle {
+                    label: "Slayer task",
+                    enabled: conditions.on_task,
+                    on_change: move |checked| player.write().boosts.on_task = checked,
+                }
+                ConditionToggle {
+                    label: "Wilderness",
+                    enabled: conditions.in_wilderness,
+                    on_change: move |checked| player.write().boosts.in_wilderness = checked,
+                }
+                ConditionToggle {
+                    label: "Kandarin hard diary",
+                    enabled: conditions.kandarin_diary,
+                    on_change: move |checked| player.write().boosts.kandarin_diary = checked,
+                }
+                ConditionToggle {
+                    label: "Multicombat",
+                    enabled: conditions.in_multi,
+                    on_change: move |checked| player.write().boosts.in_multi = checked,
+                }
+                ConditionToggle {
+                    label: "Forinthry surge",
+                    enabled: conditions.forinthry_surge,
+                    on_change: move |checked| player.write().boosts.forinthry_surge = checked,
+                }
+                ConditionToggle {
+                    label: "Charge spell",
+                    enabled: conditions.charge_active,
+                    on_change: move |checked| player.write().boosts.charge_active = checked,
+                }
+            }
+            label { class: "loadout-inline-field",
+                span { "Thrall" }
+                select {
+                    class: "input-field",
+                    value: thrall.map(ThrallChoice::key).unwrap_or(""),
+                    title: "Thralls are applied by the simulation, not by the calculated stats",
+                    onchange: move |event| state.sim.write().thrall = ThrallChoice::from_key(&event.value()),
+                    option { value: "", selected: thrall.is_none(), "None" }
+                    for choice in ThrallChoice::ALL {
+                        option {
+                            value: choice.key(),
+                            selected: thrall == Some(choice),
+                            "{choice.label()}"
                         }
                     }
                 }
@@ -441,11 +493,17 @@ fn SkillField(skill: Skill) -> Element {
     let mut player = use_context::<Signal<Player>>();
     let stat = skill.stat(&player.read());
     rsx! {
-        label { class: "loadout-stat", title: "{skill.name()}",
-            img { src: format!("{}/{}.png", crate::BONUSES_ASSETS, skill.name().to_lowercase()), alt: "{skill.name()}" }
+        label { class: "loadout-stat",
+            img {
+                src: format!("{}/{}.png", crate::BONUSES_ASSETS, skill.name().to_lowercase()),
+                alt: "",
+            }
+            span { class: "loadout-stat-name", "{skill.name()}" }
             input {
                 class: "input-field num",
-                r#type: "number", min: "1", max: "99",
+                r#type: "number",
+                min: "1",
+                max: "99",
                 aria_label: "Base {skill.name()} level",
                 value: "{stat.base}",
                 oninput: move |event| {
@@ -456,7 +514,11 @@ fn SkillField(skill: Skill) -> Element {
                     }
                 },
             }
-            span { class: if stat.current > stat.base { "loadout-stat-current num is-boosted" } else { "loadout-stat-current num" }, "{stat.current}" }
+            span {
+                class: if stat.current > stat.base { "loadout-stat-current num is-boosted" } else { "loadout-stat-current num" },
+                title: "Boosted {skill.name()}",
+                "{stat.current}"
+            }
         }
     }
 }
@@ -465,7 +527,11 @@ fn SkillField(skill: Skill) -> Element {
 fn ConditionToggle(label: &'static str, enabled: bool, on_change: EventHandler<bool>) -> Element {
     rsx! {
         label { class: if enabled { "home-check is-on" } else { "home-check" },
-            input { r#type: "checkbox", checked: enabled, onchange: move |event| on_change.call(event.checked()) }
+            input {
+                r#type: "checkbox",
+                checked: enabled,
+                onchange: move |event| on_change.call(event.checked()),
+            }
             span { "{label}" }
         }
     }
@@ -474,15 +540,21 @@ fn ConditionToggle(label: &'static str, enabled: bool, on_change: EventHandler<b
 #[component]
 fn HiscoreImport() -> Element {
     let mut player = use_context::<Signal<Player>>();
-    let mut name = use_signal(String::new);
+    // Seed from the loaded player, but read it outside the initializer: calling
+    // a hook inside another hook's closure panics.
+    let initial = player.peek().attrs.name.clone().unwrap_or_default();
+    let mut name = use_signal(|| initial);
     let mut pending = use_signal(|| false);
     let mut status = use_signal(String::new);
     rsx! {
-        form { class: "loadout-hiscores",
+        form {
+            class: "loadout-hiscores",
             onsubmit: move |event| {
                 event.prevent_default();
                 let rsn = name.read().trim().to_string();
-                if rsn.is_empty() || pending() { return; }
+                if rsn.is_empty() || pending() {
+                    return;
+                }
                 pending.set(true);
                 status.set(String::new());
                 spawn(async move {
@@ -500,11 +572,23 @@ fn HiscoreImport() -> Element {
                     pending.set(false);
                 });
             },
-            div {
-                input { class: "input-field", aria_label: "RuneScape username", placeholder: "RuneScape username", value: "{name}", oninput: move |event| name.set(event.value()) }
-                button { class: "home-button", r#type: "submit", disabled: pending(), if pending() { "Importing…" } else { "Import" } }
+            input {
+                class: "input-field",
+                aria_label: "RuneScape username",
+                placeholder: "RuneScape username",
+                value: "{name}",
+                oninput: move |event| name.set(event.value()),
             }
-            if !status.read().is_empty() { p { class: "home-muted", role: "status", "{status}" } }
+            button { class: "home-button", r#type: "submit", disabled: pending(),
+                if pending() {
+                    "Importing…"
+                } else {
+                    "Import"
+                }
+            }
+            if !status.read().is_empty() {
+                p { class: "home-muted", role: "status", "{status}" }
+            }
         }
     }
 }

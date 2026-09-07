@@ -4,7 +4,7 @@
 //! runs inline, which is how the tests exercise it.
 
 use super::metrics::calculate_against;
-use super::spec::{LoadoutSpec, OFFENSIVE_PRAYERS};
+use super::spec::{LoadoutSpec, TRACKED_PRAYERS};
 use super::strategy::{DeathCharge, RestorePolicy, SpecPlan, SpecStep, spec_cost, spec_weapons};
 use super::target::TargetConfig;
 use crate::components::preferred_style;
@@ -20,6 +20,7 @@ use osrs::sims::single_way::{SingleWayConfig, SingleWayFight};
 use osrs::types::equipment::{CombatStance, Weapon};
 use osrs::types::player::{GearSwitch, Player, SwitchType};
 use osrs::types::stats::SpecEnergy;
+use osrs::utils::logging::FightRecorder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -162,6 +163,7 @@ pub struct SingleWayOutput {
 fn restore_policy(policy: RestorePolicy) -> SpecRestorePolicy {
     match policy {
         RestorePolicy::EveryKill => SpecRestorePolicy::RestoreEveryKill,
+        RestorePolicy::EveryNKills(kills) => SpecRestorePolicy::RestoreAfter(kills),
         RestorePolicy::Never => SpecRestorePolicy::NeverRestore,
     }
 }
@@ -175,7 +177,7 @@ fn death_charge(choice: DeathCharge) -> Option<spec::DeathCharge> {
 }
 
 /// The main loadout with one step's spec weapon, overrides and prayer applied.
-fn spec_player(main: &Player, step: &SpecStep) -> Result<Player, String> {
+pub(super) fn spec_player(main: &Player, step: &SpecStep) -> Result<Player, String> {
     let mut player = main.clone();
     player.switches.clear();
     player.current_switch = None;
@@ -183,13 +185,18 @@ fn spec_player(main: &Player, step: &SpecStep) -> Result<Player, String> {
         item.equip_onto(&mut player)?;
     }
     step.weapon.equip_onto(&mut player)?;
-    if let Some(prayer) = step.prayer {
-        for offensive in OFFENSIVE_PRAYERS {
-            player.remove_prayer(offensive);
+    if !step.prayers.is_empty() {
+        for tracked in TRACKED_PRAYERS {
+            player.remove_prayer(tracked);
         }
-        player.add_prayer(prayer);
+        for prayer in &step.prayers {
+            player.add_prayer(*prayer);
+        }
     }
-    let style = preferred_style(&player.gear.weapon)
+    let style = step
+        .style
+        .filter(|style| player.gear.weapon.combat_styles.contains_key(style))
+        .or_else(|| preferred_style(&player.gear.weapon))
         .ok_or_else(|| format!("{} has no attack styles", step.weapon.name))?;
     let casting = player
         .gear
@@ -271,8 +278,7 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
         remove_final_attack_delay: false,
         reset_soulreaper_stacks: Some(input.loadout.conditions.soulreaper_stacks),
     };
-    SingleWayFight::new(player, monster, config, spec_config, false)
-        .map_err(|error| error.to_string())
+    SingleWayFight::new(player, monster, config, spec_config).map_err(|error| error.to_string())
 }
 
 /// Run the fight `options.trials` times. `progress` receives values in `0.0..=1.0`.
@@ -299,7 +305,7 @@ pub fn run_single_way(
     let mut hits = 0_u64;
     let report_every = (trials / 50).max(1);
     for trial in 0..trials {
-        match fight.simulate() {
+        match fight.simulate(&mut FightRecorder::Disabled) {
             Ok(result) => {
                 ttks.push(result.ttk_ticks.max(0) as usize);
                 attempts += u64::from(result.hit_attempts);
@@ -414,6 +420,272 @@ mod tests {
         let b = run_single_way(&full, &mut quiet()).unwrap();
         assert!(reports > 10);
         assert!(a.mean < b.mean, "reduced {} vs full {}", a.mean, b.mean);
+    }
+
+    #[test]
+    fn spec_step_uses_the_chosen_attack_style() {
+        use super::super::strategy::weapon_styles;
+        use osrs::types::equipment::CombatStyle;
+
+        let bgs = super::super::strategy::simulated_spec_weapons()
+            .iter()
+            .find(|weapon| weapon.name == "Bandos godsword")
+            .map(super::super::spec::GearItem::from_catalog)
+            .expect("Bandos godsword in the catalog");
+        let mut step = SpecStep::new(1, bgs);
+
+        let default_style = step.resolved_style().expect("a default style");
+        let other = weapon_styles(&step.weapon)
+            .into_iter()
+            .map(|(style, _, _)| style)
+            .find(|style| *style != default_style)
+            .expect("a second style");
+
+        let main = LoadoutSpec::default().to_player().player;
+        assert_eq!(
+            spec_player(&main, &step).unwrap().attrs.active_style,
+            default_style
+        );
+
+        step.style = Some(other);
+        assert_eq!(step.resolved_style(), Some(other));
+        let switched = spec_player(&main, &step).unwrap();
+        assert_eq!(switched.attrs.active_style, other);
+
+        // A style the weapon does not offer falls back rather than panicking.
+        step.style = Some(CombatStyle::Rapid);
+        assert_eq!(step.resolved_style(), Some(default_style));
+        assert_eq!(
+            spec_player(&main, &step).unwrap().attrs.active_style,
+            default_style
+        );
+    }
+
+    #[test]
+    fn spec_defence_type_matches_the_engines_tables() {
+        use super::super::strategy::spec_defence_type;
+        use osrs::types::equipment::CombatType;
+
+        // Listed weapons ignore the selected style's type.
+        assert_eq!(
+            spec_defence_type("Bandos godsword", CombatType::Crush),
+            (CombatType::Slash, true)
+        );
+        assert_eq!(
+            spec_defence_type("Arclight", CombatType::Slash),
+            (CombatType::Stab, true)
+        );
+        assert_eq!(
+            spec_defence_type("Voidwaker", CombatType::Slash),
+            (CombatType::Magic, true)
+        );
+        // Unlisted weapons follow the style, which is how the engine behaves.
+        assert_eq!(
+            spec_defence_type("Soulreaper axe", CombatType::Slash),
+            (CombatType::Slash, false)
+        );
+        assert_eq!(
+            spec_defence_type("Burning claws", CombatType::Stab),
+            (CombatType::Stab, false)
+        );
+    }
+
+    #[test]
+    fn spec_style_changes_the_attack_roll_but_not_a_fixed_defence() {
+        use super::super::strategy::weapon_styles;
+
+        let bgs = super::super::strategy::simulated_spec_weapons()
+            .iter()
+            .find(|weapon| weapon.name == "Bandos godsword")
+            .map(super::super::spec::GearItem::from_catalog)
+            .expect("Bandos godsword in the catalog");
+        let mut step = SpecStep::new(1, bgs);
+
+        // A godsword offers both slash and crush styles.
+        let styles = weapon_styles(&step.weapon);
+        let slash = styles
+            .iter()
+            .find(|(_, combat_type, _)| *combat_type == osrs::types::equipment::CombatType::Slash)
+            .map(|(style, _, _)| *style)
+            .expect("a slash style");
+        let crush = styles
+            .iter()
+            .find(|(_, combat_type, _)| *combat_type == osrs::types::equipment::CombatType::Crush)
+            .map(|(style, _, _)| *style)
+            .expect("a crush style");
+
+        let main = LoadoutSpec::default().to_player().player;
+        step.style = Some(slash);
+        let on_slash = spec_player(&main, &step).unwrap();
+        step.style = Some(crush);
+        let on_crush = spec_player(&main, &step).unwrap();
+        assert_ne!(on_slash.combat_type(), on_crush.combat_type());
+
+        // ...but the defence rolled against stays slash either way.
+        step.style = Some(crush);
+        assert_eq!(
+            step.defence_type(),
+            Some((osrs::types::equipment::CombatType::Slash, true))
+        );
+    }
+
+    /// The GUI mirrors the engine's private spec attack-roll table so the roll can
+    /// be shown. If the engine's factors change, the accuracy implied by our roll
+    /// stops matching the engine's own, and this fails.
+    #[test]
+    fn spec_attack_roll_matches_engine_accuracy() {
+        use super::super::metrics::spec_metrics;
+        use super::super::strategy::spec_defence_type;
+
+        let target = TargetConfig::example("General Graardor", 0, 0, 0);
+        let monster = target.combat_monster().unwrap();
+        let main = examples()
+            .into_iter()
+            .next()
+            .unwrap()
+            .loadout
+            .to_player()
+            .player;
+
+        for name in ["Bandos godsword", "Dragon warhammer", "Dragon dagger"] {
+            let weapon = super::super::strategy::simulated_spec_weapons()
+                .iter()
+                .find(|weapon| weapon.name == name)
+                .map(super::super::spec::GearItem::from_catalog)
+                .unwrap_or_else(|| panic!("{name} in the catalog"));
+            let step = SpecStep::new(1, weapon);
+            let player = spec_player(&main, &step).unwrap();
+            let (defence, _) =
+                spec_defence_type(name, step.style_combat_type().expect("a style type"));
+            let metrics = spec_metrics(&player, &monster, defence).unwrap();
+
+            // The engine's standard accuracy formula, applied to the rolls we show.
+            let (attack, defence_roll) = (
+                f64::from(metrics.attack_roll),
+                f64::from(metrics.defence_roll),
+            );
+            let implied = if attack > defence_roll {
+                1.0 - (defence_roll + 2.0) / (2.0 * (attack + 1.0))
+            } else {
+                attack / (2.0 * (defence_roll + 1.0))
+            };
+            assert!(
+                (implied - metrics.accuracy).abs() < 1e-6,
+                "{name}: shown rolls imply {implied} but the engine reports {}",
+                metrics.accuracy
+            );
+        }
+    }
+
+    /// Every weapon the picker offers must either produce metrics or explain
+    /// itself with the friendly message — never a raw engine error, and never a
+    /// silently empty row. Which weapons have a closed form is the engine's
+    /// business and changes over time, so this asserts the contract, not the
+    /// coverage.
+    #[test]
+    fn every_offered_spec_weapon_reports_metrics_or_a_reason() {
+        use super::super::metrics::spec_metrics;
+        use super::super::strategy::{simulated_spec_weapons, spec_defence_type};
+
+        let target = TargetConfig::example("General Graardor", 0, 0, 0);
+        let monster = target.combat_monster().unwrap();
+        let main = examples()
+            .into_iter()
+            .next()
+            .unwrap()
+            .loadout
+            .to_player()
+            .player;
+
+        for entry in simulated_spec_weapons() {
+            let step = SpecStep::new(1, super::super::spec::GearItem::from_catalog(entry));
+            let style_type = step
+                .style_combat_type()
+                .unwrap_or_else(|| panic!("{} has no attack styles", entry.name));
+            let (defence, _) = spec_defence_type(&entry.name, style_type);
+            let player =
+                spec_player(&main, &step).unwrap_or_else(|error| panic!("{}: {error}", entry.name));
+            if let Err(reason) = spec_metrics(&player, &monster, defence) {
+                assert!(
+                    reason.starts_with("No formula"),
+                    "{}: unexpected failure: {reason}",
+                    entry.name
+                );
+            }
+        }
+    }
+
+    /// A special attack the calculator cannot solve must still be usable, because
+    /// the simulation models it through `specs.rs` rather than `dps_calc`.
+    #[test]
+    fn a_spec_weapon_still_simulates() {
+        let claws = super::super::strategy::simulated_spec_weapons()
+            .iter()
+            .find(|weapon| weapon.name == "Burning claws")
+            .map(super::super::spec::GearItem::from_catalog)
+            .expect("Burning claws is offered as a spec weapon");
+        let step = SpecStep::new(1, claws);
+        let example = examples().into_iter().next().unwrap();
+
+        let mut plan = SpecPlan::default();
+        plan.steps.push(step);
+        let input = SingleWayInput {
+            loadout: example.loadout.clone(),
+            target: example.target.clone(),
+            plan,
+            options: SimOptions {
+                trials: 200,
+                thrall: None,
+            },
+        };
+        let simulated = run_single_way(&input, &mut |_| {}).expect("the fight simulates");
+        assert!(simulated.mean > 0.0);
+        assert!((simulated.ticks.iter().sum::<f64>() - 1.0).abs() < 1e-6);
+    }
+
+    /// Specs whose distribution is several hitsplats must not collapse into a
+    /// plain attack. The engine once reset the distribution for every special
+    /// attack, which made claws and halberds silently report auto-attack numbers
+    /// while every other weapon looked fine.
+    #[test]
+    fn multi_hitsplat_specs_beat_a_normal_attack() {
+        use super::super::metrics::{calculate_against, spec_metrics};
+        use super::super::strategy::{simulated_spec_weapons, spec_defence_type};
+
+        let target = TargetConfig::example("General Graardor", 0, 0, 0);
+        let monster = target.combat_monster().unwrap();
+        let main = examples()
+            .into_iter()
+            .next()
+            .unwrap()
+            .loadout
+            .to_player()
+            .player;
+
+        for name in ["Dragon claws", "Burning claws", "Dragon halberd"] {
+            let entry = simulated_spec_weapons()
+                .iter()
+                .find(|weapon| weapon.name == name)
+                .unwrap_or_else(|| panic!("{name} is offered as a spec weapon"));
+            let step = SpecStep::new(1, super::super::spec::GearItem::from_catalog(entry));
+            let player = spec_player(&main, &step).unwrap();
+            let (defence, _) = spec_defence_type(name, step.style_combat_type().unwrap());
+
+            let spec = spec_metrics(&player, &monster, defence).unwrap();
+            let normal = calculate_against(&player, &monster).unwrap();
+            assert!(
+                spec.expected_hit > normal.expected_hit * 1.5,
+                "{name}: spec expects {:.2} but a normal hit expects {:.2}",
+                spec.expected_hit,
+                normal.expected_hit
+            );
+            assert!(
+                spec.max_hit > normal.max_hit,
+                "{name}: spec max {} is not above the normal max {}",
+                spec.max_hit,
+                normal.max_hit
+            );
+        }
     }
 
     #[test]

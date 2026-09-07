@@ -18,6 +18,7 @@ pub const PLACEHOLDERS_ASSETS: Asset = asset!("/assets/placeholders");
 pub const DEF_REDUCTIONS_ASSETS: Asset = asset!("/assets/def_reductions");
 pub const STYLES_ASSETS: Asset = asset!("/assets/styles");
 pub const BONUSES_ASSETS: Asset = asset!("/assets/bonuses");
+pub const MONSTERS_ASSETS: Asset = asset!("/assets/monsters");
 
 fn main() {
     // Don't launch Dioxus if we're in a worker context

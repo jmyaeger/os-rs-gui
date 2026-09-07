@@ -4,7 +4,7 @@
 //! function pointers and cannot be serialized. Results, persistence and
 //! future permalinks store this spec instead and rebuild a `Player` from it.
 
-use crate::components::preferred_style;
+use crate::components::{equipment_catalog, preferred_style};
 use osrs::types::equipment::{Armor, CombatStyle, Equipment, EquipmentJson, GearSlot, Weapon};
 use osrs::types::player::{Player, StatusBoosts};
 use osrs::types::potions::Potion;
@@ -28,8 +28,8 @@ pub const SLOTS: [GearSlot; 11] = [
     GearSlot::Ring,
 ];
 
-/// Offensive prayers in the order they are summarized.
-pub const OFFENSIVE_PRAYERS: [Prayer; 21] = [
+/// Prayers the calculator tracks, in the order they are summarized.
+pub const TRACKED_PRAYERS: [Prayer; 21] = [
     Prayer::Piety,
     Prayer::Rigour,
     Prayer::Augury,
@@ -54,6 +54,29 @@ pub const OFFENSIVE_PRAYERS: [Prayer; 21] = [
 ];
 
 /// One equipped item, identified the way the equipment catalog identifies it.
+/// Prayers worth swapping to for a special attack. Defence-only prayers are
+/// excluded because nothing in a spec calculation reads them.
+pub const OFFENSIVE_PRAYERS: [Prayer; 18] = [
+    Prayer::Piety,
+    Prayer::Rigour,
+    Prayer::Augury,
+    Prayer::Chivalry,
+    Prayer::Deadeye,
+    Prayer::MysticVigour,
+    Prayer::IncredibleReflexes,
+    Prayer::UltimateStrength,
+    Prayer::EagleEye,
+    Prayer::MysticMight,
+    Prayer::ImprovedReflexes,
+    Prayer::SuperhumanStrength,
+    Prayer::HawkEye,
+    Prayer::MysticLore,
+    Prayer::ClarityOfThought,
+    Prayer::BurstOfStrength,
+    Prayer::SharpEye,
+    Prayer::MysticWill,
+];
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GearItem {
     pub slot: String,
@@ -108,23 +131,55 @@ impl GearItem {
     }
 
     pub(super) fn equip_onto(&self, player: &mut Player) -> Result<(), String> {
-        let version = self.version.as_deref();
-        let result = if self.is_weapon() {
-            Weapon::new(&self.name, version)
-                .map_err(|error| error.to_string())
-                .and_then(|weapon| {
-                    player
-                        .equip_item(Box::new(weapon))
+        // Build from the bundled catalog first so the search, the editor and a
+        // restored result all resolve items the same way. The engine ships its
+        // own database whose item names can drift from this one.
+        let from_catalog = equipment_catalog()
+            .iter()
+            .find(|entry| entry.name == self.name && entry.version == self.version)
+            .cloned();
+        let result = match from_catalog {
+            Some(entry) => {
+                if self.is_weapon() {
+                    entry
+                        .into_weapon()
                         .map_err(|error| error.to_string())
-                })
-        } else {
-            Armor::new(&self.name, version)
-                .map_err(|error| error.to_string())
-                .and_then(|armor| {
-                    player
-                        .equip_item(Box::new(armor))
+                        .and_then(|weapon| {
+                            player
+                                .equip_item(Box::new(weapon))
+                                .map_err(|error| error.to_string())
+                        })
+                } else {
+                    entry
+                        .into_armor()
                         .map_err(|error| error.to_string())
-                })
+                        .and_then(|armor| {
+                            player
+                                .equip_item(Box::new(armor))
+                                .map_err(|error| error.to_string())
+                        })
+                }
+            }
+            None => {
+                let version = self.version.as_deref();
+                if self.is_weapon() {
+                    Weapon::new(&self.name, version)
+                        .map_err(|error| error.to_string())
+                        .and_then(|weapon| {
+                            player
+                                .equip_item(Box::new(weapon))
+                                .map_err(|error| error.to_string())
+                        })
+                } else {
+                    Armor::new(&self.name, version)
+                        .map_err(|error| error.to_string())
+                        .and_then(|armor| {
+                            player
+                                .equip_item(Box::new(armor))
+                                .map_err(|error| error.to_string())
+                        })
+                }
+            }
         };
         result.map_err(|error| format!("{}: {error}", self.label()))
     }
@@ -318,7 +373,7 @@ impl LoadoutSpec {
         Self {
             gear,
             stats: BaseStats::from_stats(&player.stats),
-            prayers: OFFENSIVE_PRAYERS
+            prayers: TRACKED_PRAYERS
                 .into_iter()
                 .filter(|prayer| player.prayers.contains_prayer(*prayer))
                 .collect(),

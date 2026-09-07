@@ -76,6 +76,8 @@ struct MonsterRecord {
     info: MonsterInfo,
     stats: MonsterStats,
     bonuses: MonsterBonuses,
+    #[serde(default)]
+    image: String,
     #[serde(flatten)]
     extra: Map<String, Value>,
 }
@@ -228,8 +230,10 @@ impl TargetConfig {
             .iter()
             .filter(matches)
             .find(|monster| {
-                monster.info.version.is_none()
-                    || monster.info.version.as_deref() == Some("Post-quest")
+                matches!(
+                    monster.info.version.as_deref(),
+                    None | Some("") | Some("Normal") | Some("Post-quest")
+                )
             })
             .or_else(|| MONSTERS.iter().find(matches));
         let mut config = selected
@@ -447,6 +451,27 @@ impl TargetConfig {
     }
 }
 
+/// (label, icon file stem) for the six monster combat stats, in display order.
+const STAT_ICONS: [(&str, &str); 6] = [
+    ("Attack", "attack"),
+    ("Strength", "strength"),
+    ("Defence", "defence"),
+    ("Ranged", "ranged"),
+    ("Magic", "magic"),
+    ("Hitpoints", "hitpoints"),
+];
+
+/// (label, icon file name) for the seven defensive bonuses, in display order.
+const DEFENCE_ICONS: [(&str, &str); 7] = [
+    ("Stab", "dagger.png"),
+    ("Slash", "scimitar.png"),
+    ("Crush", "warhammer.png"),
+    ("Magic", "magic.png"),
+    ("Light", "ranged_light.webp"),
+    ("Standard", "ranged_standard.webp"),
+    ("Heavy", "ranged_heavy.webp"),
+];
+
 fn filter_monster(monster: &MonsterRecord, term: &str) -> bool {
     monster.label().to_lowercase().contains(term)
 }
@@ -482,30 +507,31 @@ pub fn TargetPanel(
     let stats = &current.monster.stats;
     let defence = &current.monster.bonuses.defence;
     let stat_values = [
-        ("Attack", stats.attack),
-        ("Strength", stats.strength),
-        ("Defence", stats.defence),
-        ("Ranged", stats.ranged),
-        ("Magic", stats.magic),
-        ("Hitpoints", stats.hitpoints),
+        stats.attack,
+        stats.strength,
+        stats.defence,
+        stats.ranged,
+        stats.magic,
+        stats.hitpoints,
     ];
     let defence_values = [
-        ("Stab", defence.stab),
-        ("Slash", defence.slash),
-        ("Crush", defence.crush),
-        ("Magic", defence.magic),
-        ("Light", defence.light),
-        ("Standard", defence.standard),
-        ("Heavy", defence.heavy),
+        defence.stab,
+        defence.slash,
+        defence.crush,
+        defence.magic,
+        defence.light,
+        defence.standard,
+        defence.heavy,
     ];
     let attributes = info.attributes.clone().unwrap_or_default();
     let is_toa = current.monster.is_toa();
+    let editable = current.custom;
     let starting_defence = monster
         .read()
         .as_ref()
         .map(|monster| monster.stats.defence.current)
         .unwrap_or_else(|| stats.defence.saturating_sub(current.defence_reduction));
-    let invalid = current.custom && monster.read().is_none();
+    let invalid = editable && monster.read().is_none();
     let weakness_element = info
         .weakness
         .as_ref()
@@ -516,23 +542,32 @@ pub fn TargetPanel(
         .as_ref()
         .map(|weakness| weakness.severity)
         .unwrap_or(0);
+    let sprite = (!current.monster.image.is_empty())
+        .then(|| format!("{}/{}", crate::MONSTERS_ASSETS, current.monster.image));
 
     rsx! {
-        section { class: "card home-panel target-panel", aria_label: "Target configuration",
+        section {
+            class: "card home-panel target-panel",
+            aria_label: "Target configuration",
             header { class: "home-panel-header",
                 h2 { class: "card-title", "Monster" }
                 div { class: "home-panel-actions",
-                    if !current.custom {
-                        button { class: "home-text-button", r#type: "button", title: "Edit a copy of this monster",
+                    if !editable {
+                        button {
+                            class: "home-text-button",
+                            r#type: "button",
+                            title: "Edit a copy of this monster's stats",
                             onclick: move |_| {
                                 let mut config = target.write();
                                 config.origin = Some(config.monster.label());
                                 config.custom = true;
                             },
-                            "Customize"
+                            "✎ Edit stats"
                         }
                     }
-                    button { class: "home-text-button", r#type: "button",
+                    button {
+                        class: "home-text-button",
+                        r#type: "button",
                         onclick: move |_| target.set(TargetConfig::new_custom()),
                         "New custom"
                     }
@@ -554,26 +589,41 @@ pub fn TargetPanel(
             }
 
             div { class: "target-identity",
-                if current.custom {
-                    label { class: "target-custom-name",
-                        span { class: "home-sr-only", "Custom target name" }
-                        input { class: "input-field", value: "{info.name}", maxlength: "80",
-                            oninput: move |event| target.write().monster.info.name = event.value(),
+                div { class: "target-identity-text",
+                    if editable {
+                        label { class: "target-custom-name",
+                            span { class: "home-sr-only", "Custom target name" }
+                            input {
+                                class: "input-field",
+                                value: "{info.name}",
+                                maxlength: "80",
+                                oninput: move |event| target.write().monster.info.name = event.value(),
+                            }
+                        }
+                        p { class: "target-meta",
+                            match &current.origin {
+                                Some(origin) => rsx! { "Editing a copy of {origin}" },
+                                None => rsx! { "Custom NPC" },
+                            }
+                        }
+                    } else {
+                        h3 { class: "target-name", "{info.name}" }
+                        p { class: "target-meta",
+                            "{version} · Lv. {info.combat_level} · {info.size}×{info.size}"
                         }
                     }
-                    p { class: "target-meta",
-                        match &current.origin {
-                            Some(origin) => rsx! { "Custom · based on {origin}" },
-                            None => rsx! { "Custom · from scratch" },
-                        }
+                }
+                if let Some(sprite) = sprite {
+                    img {
+                        class: "target-sprite",
+                        src: "{sprite}",
+                        alt: "",
+                        loading: "lazy",
                     }
-                } else {
-                    h3 { class: "target-name", "{info.name}" }
-                    p { class: "target-meta", "{version} · Lv. {info.combat_level} · {info.size}×{info.size}" }
                 }
             }
 
-            if current.custom {
+            if editable {
                 div { class: "target-section-label", "Attributes" }
                 div { class: "target-attribute-picker",
                     for attribute in ATTRIBUTES {
@@ -587,95 +637,159 @@ pub fn TargetPanel(
                         }
                     }
                 }
-                div { class: "target-weakness-editor",
+                div { class: "target-pair target-weakness-editor",
                     label {
                         span { "Elemental weakness" }
-                        select { class: "input-field", value: "{weakness_element}",
+                        select {
+                            class: "input-field",
+                            value: "{weakness_element}",
                             onchange: move |event| {
                                 let mut config = target.write();
                                 let element = event.value();
-                                config.monster.info.weakness = if element == "none" { None } else {
-                                    Some(Weakness { element, severity: config.monster.info.weakness.as_ref().map(|w| w.severity).unwrap_or(50) })
+                                config.monster.info.weakness = if element == "none" {
+                                    None
+                                } else {
+                                    Some(Weakness {
+                                        element,
+                                        severity: config
+                                            .monster
+                                            .info
+                                            .weakness
+                                            .as_ref()
+                                            .map(|w| w.severity)
+                                            .unwrap_or(50),
+                                    })
                                 };
                             },
-                            option { value: "none", "None" }
-                            for element in ELEMENTS { option { value: element, "{element}" } }
+                            option {
+                                value: "none",
+                                selected: weakness_element == "none",
+                                "None"
+                            }
+                            for element in ELEMENTS {
+                                option {
+                                    value: element,
+                                    selected: weakness_element == element,
+                                    "{element}"
+                                }
+                            }
                         }
                     }
                     if info.weakness.is_some() {
-                        TargetNumber { label: "Severity %", value: weakness_severity as i64, minimum: 0, maximum: 500,
-                            on_change: move |value: i64| {
-                                if let Some(weakness) = target.write().monster.info.weakness.as_mut() { weakness.severity = value as u32; }
-                            },
+                        label {
+                            span { "Severity" }
+                            input {
+                                class: "input-field num",
+                                r#type: "number",
+                                min: "0",
+                                max: "500",
+                                value: "{weakness_severity}",
+                                oninput: move |event| {
+                                    if let Ok(value) = event.value().parse::<u32>()
+                                        && let Some(weakness) = target.write().monster.info.weakness.as_mut()
+                                    {
+                                        weakness.severity = value.min(500);
+                                    }
+                                },
+                            }
                         }
                     }
                 }
                 if invalid {
-                    p { class: "home-error", role: "status", "The engine rejected this NPC. Check its stats, bonuses and starting HP." }
+                    p { class: "home-error", role: "status",
+                        "The engine rejected this NPC. Check its stats, bonuses and starting HP."
+                    }
                 }
             } else {
                 div { class: "target-attributes",
-                    if attributes.is_empty() { span { class: "home-muted", "No attributes" } }
+                    if attributes.is_empty() {
+                        span { class: "home-muted", "No attributes" }
+                    }
                     for attribute in attributes {
                         span { class: "home-chip", "{attribute}" }
                     }
                     if let Some(weakness) = &info.weakness {
                         if weakness.element != "none" {
-                            span { class: "home-chip is-note", "{weakness.element} weakness +{weakness.severity}%" }
+                            span { class: "home-chip is-note",
+                                "{weakness.element} weakness +{weakness.severity}%"
+                            }
                         }
                     }
                 }
             }
 
             div { class: "target-section-label", "Base stats" }
-            div { class: if current.custom { "target-stats is-custom" } else { "target-stats" },
-                for (index, (label, value)) in stat_values.into_iter().enumerate() {
-                    div { class: "target-stat", key: "stat-{index}",
-                        if current.custom {
-                            TargetNumber { label, value: value as i64, minimum: if index == 5 { 1 } else { 0 },
-                                on_change: move |value: i64| target.write().set_stat(index, value as u32),
-                            }
-                        } else {
-                            img { src: format!("{}/{}.png", crate::BONUSES_ASSETS, label.to_lowercase()), alt: "", title: "{label}" }
-                            span { class: "num", "{value}" }
-                        }
+            div { class: "target-stats",
+                for (index , (label , icon)) in STAT_ICONS.into_iter().enumerate() {
+                    StatRow {
+                        key: "stat-{label}",
+                        icon: format!("{}/{icon}.png", crate::BONUSES_ASSETS),
+                        label,
+                        value: stat_values[index] as i64,
+                        editable,
+                        minimum: if index == 5 { 1 } else { 0 },
+                        on_change: move |value: i64| target.write().set_stat(index, value as u32),
                     }
                 }
             }
             div { class: "target-section-label", "Defensive bonuses" }
-            div { class: if current.custom { "target-defences is-custom" } else { "target-defences" },
-                for (index, (label, value)) in defence_values.into_iter().enumerate() {
-                    div { class: "target-stat", key: "defence-{index}",
-                        if current.custom {
-                            TargetNumber { label, value: value as i64, minimum: -10000,
-                                on_change: move |value: i64| target.write().set_defence_bonus(index, value as i32),
-                            }
-                        } else {
-                            span { class: "home-muted", "{label}" }
-                            span { class: "num", "{value:+}" }
-                        }
+            div { class: "target-stats",
+                for (index , (label , icon)) in DEFENCE_ICONS.into_iter().enumerate() {
+                    StatRow {
+                        key: "defence-{label}",
+                        icon: format!("{}/{icon}", crate::BONUSES_ASSETS),
+                        label,
+                        value: defence_values[index] as i64,
+                        editable,
+                        minimum: -10000,
+                        signed: true,
+                        on_change: move |value: i64| target.write().set_defence_bonus(index, value as i32),
                     }
                 }
-            }
-            if current.custom {
-                div { class: "target-pair",
-                    TargetNumber { label: "Size (tiles)", value: info.size as i64, minimum: 1, maximum: 10,
-                        on_change: move |value: i64| target.write().monster.info.size = value as u32,
-                    }
-                    TargetNumber { label: "Flat armour", value: current.monster.bonuses.flat_armour as i64, minimum: -10000,
+                if editable {
+                    StatRow {
+                        icon: format!("{}/flat_armour.png", crate::BONUSES_ASSETS),
+                        label: "Flat armour",
+                        value: current.monster.bonuses.flat_armour as i64,
+                        editable: true,
+                        minimum: -10000,
+                        signed: true,
                         on_change: move |value: i64| target.write().monster.bonuses.flat_armour = value as i32,
                     }
+                    StatRow {
+                        icon: format!("{}/attack_speed.png", crate::BONUSES_ASSETS),
+                        label: "Size",
+                        value: info.size as i64,
+                        editable: true,
+                        minimum: 1,
+                        maximum: 10,
+                        on_change: move |value: i64| target.write().monster.info.size = value as u32,
+                    }
+                } else if current.monster.bonuses.flat_armour != 0 {
+                    StatRow {
+                        icon: format!("{}/flat_armour.png", crate::BONUSES_ASSETS),
+                        label: "Flat armour",
+                        value: current.monster.bonuses.flat_armour as i64,
+                        signed: true,
+                        on_change: move |_: i64| {},
+                    }
                 }
-            } else if current.monster.bonuses.flat_armour != 0 {
-                p { class: "target-note", "Flat armour {current.monster.bonuses.flat_armour}" }
             }
 
             div { class: "target-section-label", "Encounter" }
             div { class: "target-pair",
-                TargetNumber { label: "Starting HP", value: current.starting_hp as i64, minimum: 1, maximum: current.max_hp as i64,
+                TargetNumber {
+                    label: "Starting HP",
+                    value: current.starting_hp as i64,
+                    minimum: 1,
+                    maximum: current.max_hp as i64,
                     on_change: move |value: i64| target.write().starting_hp = value as u32,
                 }
-                TargetNumber { label: "Defence reduction", value: current.defence_reduction as i64, minimum: 0, maximum: stats.defence as i64,
+                TargetNumber {
+                    label: "Defence reduction",
+                    value: current.defence_reduction as i64,
+                    minimum: 0,
+                    maximum: stats.defence as i64,
                     on_change: move |value: i64| {
                         let mut config = target.write();
                         config.defence_reduction = (value as u32).min(config.monster.stats.defence);
@@ -684,14 +798,22 @@ pub fn TargetPanel(
             }
             if is_toa {
                 div { class: "target-pair",
-                    TargetNumber { label: "ToA invocation", value: current.toa_level as i64, minimum: 0, maximum: 600,
+                    TargetNumber {
+                        label: "ToA invocation",
+                        value: current.toa_level as i64,
+                        minimum: 0,
+                        maximum: 600,
                         on_change: move |value: i64| {
                             let mut config = target.write();
                             let path = config.toa_path_level;
                             config.set_toa_scaling(value as u32, path);
                         },
                     }
-                    TargetNumber { label: "Path level", value: current.toa_path_level as i64, minimum: 0, maximum: 6,
+                    TargetNumber {
+                        label: "Path level",
+                        value: current.toa_path_level as i64,
+                        minimum: 0,
+                        maximum: 6,
                         on_change: move |value: i64| {
                             let mut config = target.write();
                             let level = config.toa_level;
@@ -702,7 +824,49 @@ pub fn TargetPanel(
             }
             p { class: "target-note",
                 "Starting Defence {starting_defence}"
-                if is_toa || current.starting_hp != current.max_hp { " · max HP {current.max_hp}" }
+                if is_toa || current.starting_hp != current.max_hp {
+                    " · max HP {current.max_hp}"
+                }
+            }
+        }
+    }
+}
+
+/// One `icon · label · value` row. The value becomes an input in custom mode so
+/// the editable and read-only panels stay the same height.
+#[component]
+fn StatRow(
+    icon: String,
+    label: &'static str,
+    value: i64,
+    #[props(default = false)] editable: bool,
+    #[props(default = false)] signed: bool,
+    #[props(default = 0)] minimum: i64,
+    #[props(default = 1_000_000)] maximum: i64,
+    on_change: EventHandler<i64>,
+) -> Element {
+    rsx! {
+        div { class: "target-stat",
+            img { src: "{icon}", alt: "" }
+            span { "{label}" }
+            if editable {
+                input {
+                    class: "input-field num",
+                    r#type: "number",
+                    min: "{minimum}",
+                    max: "{maximum}",
+                    value: "{value}",
+                    aria_label: "{label}",
+                    oninput: move |event| {
+                        if let Ok(value) = event.value().parse::<i64>() {
+                            on_change.call(value.clamp(minimum, maximum));
+                        }
+                    },
+                }
+            } else if signed {
+                strong { class: "num", "{value:+}" }
+            } else {
+                strong { class: "num", "{value}" }
             }
         }
     }
@@ -719,7 +883,12 @@ fn TargetNumber(
     rsx! {
         label { class: "target-number",
             span { "{label}" }
-            input { class: "input-field num", r#type: "number", min: "{minimum}", max: "{maximum}", value: "{value}",
+            input {
+                class: "input-field num",
+                r#type: "number",
+                min: "{minimum}",
+                max: "{maximum}",
+                value: "{value}",
                 oninput: move |event| {
                     if let Ok(value) = event.value().parse::<i64>() {
                         on_change.call(value.clamp(minimum, maximum));
@@ -784,3 +953,28 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+mod probe {
+    #[test]
+    fn probe_catalog() {
+        println!("MONSTERS len = {}", super::MONSTERS.len());
+        let raw: Vec<serde_json::Value> = serde_json::from_str(super::MONSTER_JSON).unwrap();
+        let zebak = raw
+            .iter()
+            .find(|m| m["info"]["name"] == "Zebak")
+            .expect("zebak in raw json");
+        let one = serde_json::to_string(&vec![zebak.clone()]).unwrap();
+        match osrs::types::monster::Monster::from_json_str(
+            "Zebak",
+            zebak["info"]["version"].as_str(),
+            &one,
+        ) {
+            Ok(m) => println!("engine parsed OK: hp={}", m.stats.hitpoints.current),
+            Err(e) => println!("engine ERROR: {e:?}"),
+        }
+        match super::MONSTERS.iter().find(|m| m.info.name == "Zebak") {
+            Some(m) => println!("record hp={} def={}", m.stats.hitpoints, m.stats.defence),
+            None => println!("no Zebak record"),
+        }
+    }
+}
