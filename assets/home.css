@@ -412,9 +412,9 @@
   min-width: 0;
   padding: 0.5rem 0.65rem;
   border-radius: 3px;
-  background: rgb(var(--bg) / 0.35);
+  background: rgb(var(--bg) / 0.5);
 }
-.metric-tile dt { font-size: 0.75rem; color: rgb(var(--muted)); }
+.metric-tile dt { font-size: 0.85rem; color: rgb(var(--muted)); }
 .metric-tile dd { margin: 0; font-size: 1.15rem; font-weight: 500; color: rgb(var(--text)); }
 .metric-tile dd small { font-size: 0.75rem; color: rgb(var(--muted)); margin-left: 0.1rem; font-weight: 400; }
 .metric-tile.is-emphasis { background: rgb(var(--accent) / 0.12); border: 1px solid rgb(var(--accent) / 0.25); }

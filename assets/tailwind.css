@@ -1025,8 +1025,8 @@
   --surface: 24 24 32;
   --surface2: 32 32 42;
   --border: 60 60 75;
-  --text: 235 235 240;
-  --muted: 140 140 155;
+  --text: 224 225 221;
+  --muted: 170 170 180;
   --accent: 161 161 170;
   --melee: 239 68 68;
   --melee-glow: 239 68 68;
@@ -1133,7 +1133,7 @@ body {
 .equipment-slot-bg {
   background: rgb(var(--surface) / 0.8);
   border: 2px solid rgb(var(--border) / 0.5);
-  border-radius: 8px;
+  border-radius: 3px;
   transition: all 0.2s ease;
 }
 .equipment-slot-bg:hover {

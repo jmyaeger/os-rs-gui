@@ -460,7 +460,6 @@ pub fn MetricsStrip(monster: ReadSignal<Option<Monster>>) -> Element {
                         MetricTile {
                             label: "DPS",
                             value: format!("{:.2}", metrics.dps),
-                            emphasis: true,
                             help: "Average damage per second, including burn and thralls.",
                         }
                         MetricTile {
