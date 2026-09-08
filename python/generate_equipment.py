@@ -318,9 +318,9 @@ def main():
     print("Total equipment: " + str(len(new_data)))
     new_data.sort(key=lambda d: d.get("name"))
 
-    with open(FILE_NAME, "w") as f:
-        print("Saving to JSON at file: " + FILE_NAME)
-        json.dump(new_data, f, ensure_ascii=False, indent=2)
+    # with open(FILE_NAME, "w") as f:
+    #     print("Saving to JSON at file: " + FILE_NAME)
+    #     json.dump(new_data, f, ensure_ascii=False, indent=2)
 
     success_img_dls = 0
     failed_img_dls = 0

@@ -245,9 +245,9 @@ def main():
                 "burn": burn_immunity,
             },
             "max_hit": v.get("max_hit"),
-            "image": ""
-            if not v.get("image")
-            else v.get("image")[-1].replace("File:", ""),
+            "image": (
+                "" if not v.get("image") else v.get("image")[-1].replace("File:", "")
+            ),
         }
 
         weakness = v.get("elemental_weakness")
@@ -310,9 +310,9 @@ def main():
     print("Total monsters: " + str(len(data)))
 
     # Save the JSON
-    with open(FILE_NAME, "w") as f:
-        print("Saving to JSON at file: " + FILE_NAME)
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    # with open(FILE_NAME, "w") as f:
+    #     print("Saving to JSON at file: " + FILE_NAME)
+    #     json.dump(data, f, ensure_ascii=False, indent=2)
 
     success_img_dls = 0
     failed_img_dls = 0

@@ -1,32 +1,30 @@
 use crate::components::search_bar::SearchBar;
 use dioxus::prelude::*;
-use osrs::types::equipment::{CombatStance, CombatStyle, EquipmentJson, Weapon};
+use osrs::types::equipment::{CombatStance, CombatStyle, EquipmentJson, Weapon, all_equipment};
 use osrs::types::player::Player;
 use std::sync::LazyLock;
 
-const EQUIPMENT_JSON_STRING: &str = include_str!("../../assets/json/equipment.json");
-
-static EQUIPMENT_ITEMS: LazyLock<Option<Vec<EquipmentJson>>> = LazyLock::new(|| {
-    serde_json::from_str::<Vec<EquipmentJson>>(EQUIPMENT_JSON_STRING)
-        .ok()
-        .map(|items| {
-            items
-                .into_iter()
-                .filter(|item| {
-                    item.name != "Unarmed"
-                        && (item.slot != "Weapon"
-                            || (item.category.is_some()
-                                && item.speed.is_some()
-                                && item.attack_range.is_some()
-                                && item.is_two_handed.is_some()))
-                })
-                .collect()
+/// The engine's catalog, minus items the calculator cannot equip. Referencing the
+/// engine's copy rather than a second bundled one keeps the search, the editor
+/// and the engine's own name-based rules in agreement.
+static EQUIPMENT_ITEMS: LazyLock<Vec<EquipmentJson>> = LazyLock::new(|| {
+    all_equipment()
+        .iter()
+        .filter(|item| {
+            item.name != "Unarmed"
+                && (item.slot != "Weapon"
+                    || (item.category.is_some()
+                        && item.speed.is_some()
+                        && item.attack_range.is_some()
+                        && item.is_two_handed.is_some()))
         })
+        .cloned()
+        .collect()
 });
 
-/// Every catalog item the search can equip; empty if the catalog failed to parse.
+/// Every catalog item the search can equip.
 pub fn equipment_catalog() -> &'static [EquipmentJson] {
-    EQUIPMENT_ITEMS.as_deref().unwrap_or(&[])
+    &EQUIPMENT_ITEMS
 }
 
 /// The style a weapon should default to when the current one does not exist on it.
@@ -104,51 +102,40 @@ fn get_equipment_key(item: &EquipmentJson) -> String {
 pub fn EquipmentSelect() -> Element {
     let mut player = use_context::<Signal<Player>>();
 
-    match &*EQUIPMENT_ITEMS {
-        Some(equipment_list) => {
-            rsx! {
-                SearchBar {
-                    items: equipment_list.clone(),
-                    filter_fn: filter_equipment,
-                    render_item: render_equipment_item,
-                    get_key: get_equipment_key,
-                    on_select: move |item: EquipmentJson| {
-                        let mut player = player.write();
-                        let result = if item.slot.eq_ignore_ascii_case("weapon") {
-                            item.clone()
-                                .into_weapon()
-                                .map_err(|_| format!("Failed to convert '{}' to weapon", item.name))
-                                .and_then(|weapon| {
-                                    player
-                                        .equip_item(Box::new(weapon))
-                                        .map_err(|e| format!("Failed to equip weapon: {e}"))
-                                })
-                        } else {
-                            item.clone()
-                                .into_armor()
-                                .map_err(|_| format!("Failed to convert '{}' to armor", item.name))
-                                .and_then(|armor| {
-                                    player
-                                        .equip_item(Box::new(armor))
-                                        .map_err(|e| format!("Failed to equip armor: {e}"))
-                                })
-                        };
+    rsx! {
+        SearchBar {
+            items: equipment_catalog().to_vec(),
+            filter_fn: filter_equipment,
+            render_item: render_equipment_item,
+            get_key: get_equipment_key,
+            on_select: move |item: EquipmentJson| {
+                let mut player = player.write();
+                let result = if item.slot.eq_ignore_ascii_case("weapon") {
+                    item.clone()
+                        .into_weapon()
+                        .map_err(|_| format!("Failed to convert '{}' to weapon", item.name))
+                        .and_then(|weapon| {
+                            player
+                                .equip_item(Box::new(weapon))
+                                .map_err(|e| format!("Failed to equip weapon: {e}"))
+                        })
+                } else {
+                    item.clone()
+                        .into_armor()
+                        .map_err(|_| format!("Failed to convert '{}' to armor", item.name))
+                        .and_then(|armor| {
+                            player
+                                .equip_item(Box::new(armor))
+                                .map_err(|e| format!("Failed to equip armor: {e}"))
+                        })
+                };
 
-                        match result {
-                            Ok(()) => ensure_style(&mut player),
-                            Err(e) => log::error!("{e}"),
-                        }
-                    },
-                    placeholder: "Search for equipment...".to_string(),
+                match result {
+                    Ok(()) => ensure_style(&mut player),
+                    Err(e) => log::error!("{e}"),
                 }
-            }
-        }
-        None => {
-            rsx! {
-                div { class: "panel p-4 text-error",
-                    "Error: Could not parse embedded equipment data. Check console for details."
-                }
-            }
+            },
+            placeholder: "Search for equipment...".to_string(),
         }
     }
 }

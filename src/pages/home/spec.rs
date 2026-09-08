@@ -4,7 +4,7 @@
 //! function pointers and cannot be serialized. Results, persistence and
 //! future permalinks store this spec instead and rebuild a `Player` from it.
 
-use crate::components::{equipment_catalog, preferred_style};
+use crate::components::preferred_style;
 use osrs::types::equipment::{Armor, CombatStyle, Equipment, EquipmentJson, GearSlot, Weapon};
 use osrs::types::player::{Player, StatusBoosts};
 use osrs::types::potions::Potion;
@@ -131,55 +131,26 @@ impl GearItem {
     }
 
     pub(super) fn equip_onto(&self, player: &mut Player) -> Result<(), String> {
-        // Build from the bundled catalog first so the search, the editor and a
-        // restored result all resolve items the same way. The engine ships its
-        // own database whose item names can drift from this one.
-        let from_catalog = equipment_catalog()
-            .iter()
-            .find(|entry| entry.name == self.name && entry.version == self.version)
-            .cloned();
-        let result = match from_catalog {
-            Some(entry) => {
-                if self.is_weapon() {
-                    entry
-                        .into_weapon()
+        // `Weapon::new`/`Armor::new` read the engine's own catalog, which is the
+        // same data the search offers, so a stored name always resolves the way
+        // it did when it was picked.
+        let version = self.version.as_deref();
+        let result = if self.is_weapon() {
+            Weapon::new(&self.name, version)
+                .map_err(|error| error.to_string())
+                .and_then(|weapon| {
+                    player
+                        .equip_item(Box::new(weapon))
                         .map_err(|error| error.to_string())
-                        .and_then(|weapon| {
-                            player
-                                .equip_item(Box::new(weapon))
-                                .map_err(|error| error.to_string())
-                        })
-                } else {
-                    entry
-                        .into_armor()
+                })
+        } else {
+            Armor::new(&self.name, version)
+                .map_err(|error| error.to_string())
+                .and_then(|armor| {
+                    player
+                        .equip_item(Box::new(armor))
                         .map_err(|error| error.to_string())
-                        .and_then(|armor| {
-                            player
-                                .equip_item(Box::new(armor))
-                                .map_err(|error| error.to_string())
-                        })
-                }
-            }
-            None => {
-                let version = self.version.as_deref();
-                if self.is_weapon() {
-                    Weapon::new(&self.name, version)
-                        .map_err(|error| error.to_string())
-                        .and_then(|weapon| {
-                            player
-                                .equip_item(Box::new(weapon))
-                                .map_err(|error| error.to_string())
-                        })
-                } else {
-                    Armor::new(&self.name, version)
-                        .map_err(|error| error.to_string())
-                        .and_then(|armor| {
-                            player
-                                .equip_item(Box::new(armor))
-                                .map_err(|error| error.to_string())
-                        })
-                }
-            }
+                })
         };
         result.map_err(|error| format!("{}: {error}", self.label()))
     }

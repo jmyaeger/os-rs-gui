@@ -68,19 +68,15 @@ const MELEE_GEAR: [(&str, Option<&str>); 10] = [
     ("Ultor ring", None),
 ];
 
-// Names come from assets/json/equipment.json, which is what the search offers
-// and what a restored loadout resolves against. The examples deliberately avoid
-// items whose names differ from the engine's own database (for instance
-// "Bow of Faerdhinen" vs the engine's "Bow of faerdhinen"), because the engine
-// still matches rules like USES_OWN_AMMO and SPEC_COSTS on its own spelling.
-const RANGED_GEAR: [(&str, Option<&str>); 10] = [
-    ("Masori mask (f)", None),
+// Names come from the engine's catalog, which is also what the search offers and
+// what a restored loadout resolves against, so a name here is a name everywhere.
+const RANGED_GEAR: [(&str, Option<&str>); 9] = [
+    ("Crystal helm", Some("Active")),
     ("Ava's assembler", None),
     ("Necklace of anguish", None),
-    ("Zaryte crossbow", None),
-    ("Ruby dragon bolts (e)", None),
-    ("Masori body (f)", None),
-    ("Masori chaps (f)", None),
+    ("Bow of Faerdhinen", Some("Charged")),
+    ("Crystal body", Some("Active")),
+    ("Crystal legs", Some("Active")),
     ("Barrows gloves", None),
     ("Pegasian boots", None),
     ("Ring of suffering (i)", Some("Recoil")),
@@ -88,7 +84,7 @@ const RANGED_GEAR: [(&str, Option<&str>); 10] = [
 
 const MAGIC_GEAR: [(&str, Option<&str>); 9] = [
     ("Ancestral hat", None),
-    ("Saradomin cape", None),
+    ("Imbued Saradomin cape", None),
     ("Occult necklace", None),
     ("Tumeken's shadow", Some("Charged")),
     ("Ancestral robe top", None),
@@ -172,7 +168,7 @@ pub fn examples() -> Vec<Example> {
             missing: missing_items(&[&MELEE_GEAR, &MELEE_SPECS]),
         },
         Example {
-            name: "Zaryte crossbow · 95 Ranged",
+            name: "Bowfa · 95 Ranged",
             loadout: ranged,
             target: TargetConfig::example("General Graardor", 0, 0, 40),
             plan: SpecPlan::default(),

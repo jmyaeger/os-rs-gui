@@ -1,38 +1,96 @@
 //! Monster selection, scaling, and custom NPCs.
+//!
+//! The engine owns the monster database. This module keeps a small display and
+//! edit shadow of a monster so a target can be persisted and hand-edited, and
+//! builds the engine's own `Monster` by cloning the catalog entry and applying
+//! those edits — no second copy of the data, and no JSON round-trip.
 
 use crate::components::SearchBar;
 use dioxus::prelude::*;
-use osrs::types::monster::Monster;
+use osrs::types::monster::{AttackType, Attribute, ElementalWeakness, Monster, all_monsters};
+use osrs::types::stats::Stat;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
 use std::sync::LazyLock;
 
-const MONSTER_JSON: &str = include_str!("../../../assets/json/monsters.json");
-static MONSTERS: LazyLock<Vec<MonsterRecord>> = LazyLock::new(|| {
-    serde_json::from_str(MONSTER_JSON).unwrap_or_else(|error| {
-        log::error!("Could not read monster catalog: {error}");
-        Vec::new()
-    })
-});
-
 /// Attributes the engine reacts to, in the order they are offered for custom NPCs.
-pub const ATTRIBUTES: [&str; 15] = [
-    "dragon", "demon", "undead", "fiery", "kalphite", "golem", "leafy", "rat", "shade", "spectral",
-    "xerician", "penance", "vampyre1", "vampyre2", "vampyre3",
+pub const ATTRIBUTES: [&str; 17] = [
+    "dragon", "demon", "undead", "fiery", "icy", "flying", "kalphite", "golem", "leafy", "rat",
+    "shade", "spectral", "xerician", "penance", "vampyre1", "vampyre2", "vampyre3",
 ];
 const ELEMENTS: [&str; 4] = ["air", "water", "earth", "fire"];
 
+/// The searchable catalog, shadowed once from the engine's database.
+static MONSTERS: LazyLock<Vec<MonsterRecord>> = LazyLock::new(|| {
+    all_monsters()
+        .iter()
+        .map(MonsterRecord::from_engine)
+        .collect()
+});
+
+fn catalog_entry(name: &str, version: Option<&str>) -> Option<&'static Monster> {
+    all_monsters()
+        .iter()
+        .find(|monster| monster.info.name == name && monster.info.version.as_deref() == version)
+}
+
+fn attribute_name(attribute: &Attribute) -> String {
+    match attribute {
+        Attribute::Demon => "demon".to_string(),
+        Attribute::Draconic => "dragon".to_string(),
+        Attribute::Fiery => "fiery".to_string(),
+        Attribute::Flying => "flying".to_string(),
+        Attribute::Golem => "golem".to_string(),
+        Attribute::Icy => "icy".to_string(),
+        Attribute::Kalphite => "kalphite".to_string(),
+        Attribute::Leafy => "leafy".to_string(),
+        Attribute::Penance => "penance".to_string(),
+        Attribute::Rat => "rat".to_string(),
+        Attribute::Shade => "shade".to_string(),
+        Attribute::Spectral => "spectral".to_string(),
+        Attribute::Undead => "undead".to_string(),
+        Attribute::Vampyre(tier) => format!("vampyre{tier}"),
+        Attribute::Xerician => "xerician".to_string(),
+    }
+}
+
+fn parse_attribute(name: &str) -> Option<Attribute> {
+    Some(match name {
+        "demon" => Attribute::Demon,
+        "dragon" => Attribute::Draconic,
+        "fiery" => Attribute::Fiery,
+        "flying" => Attribute::Flying,
+        "golem" => Attribute::Golem,
+        "icy" => Attribute::Icy,
+        "kalphite" => Attribute::Kalphite,
+        "leafy" => Attribute::Leafy,
+        "penance" => Attribute::Penance,
+        "rat" => Attribute::Rat,
+        "shade" => Attribute::Shade,
+        "spectral" => Attribute::Spectral,
+        "undead" => Attribute::Undead,
+        "vampyre1" => Attribute::Vampyre(1),
+        "vampyre2" => Attribute::Vampyre(2),
+        "vampyre3" => Attribute::Vampyre(3),
+        "xerician" => Attribute::Xerician,
+        _ => return None,
+    })
+}
+
+/// Overwrite a stat's level, leaving the engine's drain floor intact.
+fn set_level(stat: &mut Stat, value: u32) {
+    stat.base = value;
+    stat.current = value;
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
 struct MonsterInfo {
-    id: Option<i32>,
+    id: i32,
     name: String,
     version: Option<String>,
     combat_level: u32,
     size: u32,
     attributes: Option<Vec<String>>,
     weakness: Option<Weakness>,
-    #[serde(flatten)]
-    extra: Map<String, Value>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -67,10 +125,11 @@ struct MonsterBonuses {
     defence: DefenceBonuses,
     #[serde(default)]
     flat_armour: i32,
-    #[serde(flatten)]
-    extra: Map<String, Value>,
 }
 
+/// The fields the panel shows and lets the user edit. Everything else about a
+/// monster — immunities, offensive bonuses, max hits — stays in the engine's
+/// entry and is picked up by cloning it.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Default)]
 struct MonsterRecord {
     info: MonsterInfo,
@@ -78,11 +137,51 @@ struct MonsterRecord {
     bonuses: MonsterBonuses,
     #[serde(default)]
     image: String,
-    #[serde(flatten)]
-    extra: Map<String, Value>,
 }
 
 impl MonsterRecord {
+    fn from_engine(monster: &Monster) -> Self {
+        Self {
+            info: MonsterInfo {
+                id: monster.info.id,
+                name: monster.info.name.clone(),
+                version: monster.info.version.clone(),
+                combat_level: monster.info.combat_level,
+                size: monster.info.size,
+                attributes: monster
+                    .info
+                    .attributes
+                    .as_ref()
+                    .map(|list| list.iter().map(attribute_name).collect()),
+                weakness: monster.info.weakness.as_ref().map(|weakness| Weakness {
+                    element: weakness.element.clone(),
+                    severity: weakness.severity.max(0) as u32,
+                }),
+            },
+            stats: MonsterStats {
+                attack: monster.stats.attack.base,
+                strength: monster.stats.strength.base,
+                defence: monster.stats.defence.base,
+                ranged: monster.stats.ranged.base,
+                magic: monster.stats.magic.base,
+                hitpoints: monster.stats.hitpoints.base,
+            },
+            bonuses: MonsterBonuses {
+                defence: DefenceBonuses {
+                    stab: monster.bonuses.defence.stab,
+                    slash: monster.bonuses.defence.slash,
+                    crush: monster.bonuses.defence.crush,
+                    light: monster.bonuses.defence.light,
+                    standard: monster.bonuses.defence.standard,
+                    heavy: monster.bonuses.defence.heavy,
+                    magic: monster.bonuses.defence.magic,
+                },
+                flat_armour: monster.bonuses.flat_armour,
+            },
+            image: monster.image.clone(),
+        }
+    }
+
     fn label(&self) -> String {
         match self
             .info
@@ -96,10 +195,16 @@ impl MonsterRecord {
     }
 
     fn is_toa(&self) -> bool {
-        self.info
-            .id
-            .is_some_and(|id| osrs::constants::TOA_MONSTERS.contains(&id))
+        osrs::constants::TOA_MONSTERS.contains(&self.info.id)
     }
+}
+
+/// The catalog entry a target was built from, so the engine monster can be
+/// rebuilt after a reload without storing a second copy of its data.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+struct MonsterSource {
+    name: String,
+    version: Option<String>,
 }
 
 /// The selected monster plus the encounter's starting state.
@@ -109,11 +214,11 @@ pub struct TargetConfig {
     monster: MonsterRecord,
     custom: bool,
     origin: Option<String>,
+    source: Option<MonsterSource>,
     starting_hp: u32,
     defence_reduction: u32,
     toa_level: u32,
     toa_path_level: u32,
-    source_name: Option<String>,
     /// Scaled maximum HP, cached so summaries do not rebuild the engine monster.
     max_hp: u32,
 }
@@ -137,7 +242,10 @@ impl TargetConfig {
     fn from_monster(monster: MonsterRecord) -> Self {
         let mut config = Self {
             starting_hp: monster.stats.hitpoints,
-            source_name: Some(monster.info.name.clone()),
+            source: Some(MonsterSource {
+                name: monster.info.name.clone(),
+                version: monster.info.version.clone(),
+            }),
             monster,
             custom: false,
             origin: None,
@@ -170,10 +278,15 @@ impl TargetConfig {
             magic: 1,
             hitpoints: 100,
         };
-        Self {
+        let mut config = Self {
             custom: true,
             ..Self::from_monster(monster)
-        }
+        };
+        // Built from nothing, so there is no catalog entry to clone.
+        config.source = None;
+        config.refresh_max_hp();
+        config.starting_hp = config.max_hp;
+        config
     }
 
     /// Recompute cached values after deserialization.
@@ -249,46 +362,77 @@ impl TargetConfig {
         config
     }
 
-    /// Rebuild from the local catalog record so custom copies retain fields the
-    /// editor does not expose, including immunities and offensive bonuses.
+    /// The engine entry this target was built from, if it came from the catalog.
+    fn source_monster(&self) -> Option<&'static Monster> {
+        let source = self.source.as_ref()?;
+        catalog_entry(&source.name, source.version.as_deref())
+    }
+
+    /// A monster from nothing, for a custom NPC with no catalog ancestor.
+    fn blank_monster() -> Monster {
+        let mut monster = Monster::default();
+        monster.info.name = "Custom target".to_string();
+        monster.info.size = 1;
+        monster.info.attack_speed = Some(4);
+        monster.info.attack_styles = Some(vec![AttackType::Crush]);
+        monster
+    }
+
+    /// Copy the edited fields onto an engine monster and refresh what they feed.
+    fn apply_edits(&self, monster: &mut Monster) {
+        let record = &self.monster;
+        monster.info.size = record.info.size;
+        monster.info.combat_level = record.info.combat_level;
+        set_level(&mut monster.stats.attack, record.stats.attack);
+        set_level(&mut monster.stats.strength, record.stats.strength);
+        set_level(&mut monster.stats.defence, record.stats.defence);
+        set_level(&mut monster.stats.ranged, record.stats.ranged);
+        set_level(&mut monster.stats.magic, record.stats.magic);
+        set_level(&mut monster.stats.hitpoints, record.stats.hitpoints.max(1));
+
+        let defence = &mut monster.bonuses.defence;
+        defence.stab = record.bonuses.defence.stab;
+        defence.slash = record.bonuses.defence.slash;
+        defence.crush = record.bonuses.defence.crush;
+        defence.light = record.bonuses.defence.light;
+        defence.standard = record.bonuses.defence.standard;
+        defence.heavy = record.bonuses.defence.heavy;
+        defence.magic = record.bonuses.defence.magic;
+        // Drains are measured against this, so it tracks the edited value.
+        defence.magic_base = record.bonuses.defence.magic;
+        monster.bonuses.flat_armour = record.bonuses.flat_armour;
+
+        monster.info.attributes = record.info.attributes.as_ref().map(|list| {
+            list.iter()
+                .filter_map(|name| parse_attribute(name))
+                .collect()
+        });
+        monster.info.weakness = record
+            .info
+            .weakness
+            .as_ref()
+            .map(|weakness| ElementalWeakness {
+                element: weakness.element.clone(),
+                severity: i64::from(weakness.severity),
+            });
+
+        // Rolls are derived from everything above, and ToA scaling is layered on
+        // afterwards, so this must run with the invocation level still at zero.
+        monster.info.toa_level = 0;
+        monster.info.toa_path_level = 0;
+        monster.recalculate_def_rolls();
+    }
+
+    /// The engine monster for this target, before the encounter's starting state.
     fn scaled_monster(&self) -> Option<Monster> {
         if !self.rolls_fit() {
             return None;
         }
-        let mut record = serde_json::to_value(&self.monster).ok()?;
-        let engine_name = if self.custom {
-            if self.origin.is_some() {
-                self.source_name.as_deref().unwrap_or("Custom target")
-            } else {
-                "Custom target"
-            }
-        } else {
-            &self.monster.info.name
+        let mut monster = match self.source_monster() {
+            Some(entry) => entry.clone(),
+            None => Self::blank_monster(),
         };
-        let info = record.get_mut("info")?.as_object_mut()?;
-        info.insert("name".to_string(), json!(engine_name));
-        info.entry("attack_speed").or_insert(json!(4));
-        info.entry("attack_styles").or_insert(json!(["Crush"]));
-        // Scaling is applied only after the unscaled rolls have been initialized.
-        info.insert("toa_level".to_string(), json!(0));
-        info.insert("toa_path_level".to_string(), json!(0));
-        let bonuses = record.get_mut("bonuses")?.as_object_mut()?;
-        bonuses
-            .entry("attack")
-            .or_insert(json!({"melee": 0, "ranged": 0, "magic": 0}));
-        bonuses
-            .entry("strength")
-            .or_insert(json!({"melee": 0, "ranged": 0, "magic": 0}));
-        record
-            .as_object_mut()?
-            .entry("immunities")
-            .or_insert(json!({
-                "poison": false, "venom": false, "freeze": 0, "burn": null,
-            }));
-        let json = serde_json::to_string(&vec![record]).ok()?;
-        let mut monster =
-            Monster::from_json_str(engine_name, self.monster.info.version.as_deref(), &json)
-                .ok()?;
+        self.apply_edits(&mut monster);
         if self.monster.is_toa() {
             monster.set_toa_level(self.toa_level.min(600), self.toa_path_level.min(6));
         }
@@ -330,19 +474,23 @@ impl TargetConfig {
         } else {
             1
         };
-        let largest_offence = ["attack", "strength"]
-            .into_iter()
-            .filter_map(|name| {
-                self.monster
-                    .bonuses
-                    .extra
-                    .get(name)
-                    .and_then(Value::as_object)
+        // Offensive bonuses are not editable, so they come from the catalog entry.
+        let largest_offence = self
+            .source_monster()
+            .map(|monster| {
+                [
+                    monster.bonuses.attack.melee,
+                    monster.bonuses.attack.ranged,
+                    monster.bonuses.attack.magic,
+                    monster.bonuses.strength.melee,
+                    monster.bonuses.strength.ranged,
+                    monster.bonuses.strength.magic,
+                ]
+                .into_iter()
+                .map(|bonus| (i64::from(bonus) + 64).abs())
+                .max()
+                .unwrap_or(64)
             })
-            .flat_map(|bonuses| bonuses.values())
-            .filter_map(Value::as_i64)
-            .map(|bonus| (bonus + 64).abs())
-            .max()
             .unwrap_or(64);
         level * largest_defence * scaling <= i64::from(i32::MAX)
             && level * largest_offence + 320 <= i64::from(i32::MAX)
@@ -479,7 +627,7 @@ fn filter_monster(monster: &MonsterRecord, term: &str) -> bool {
 fn monster_key(monster: &MonsterRecord) -> String {
     format!(
         "{}-{}-{}-{}",
-        monster.info.id.unwrap_or_default(),
+        monster.info.id,
         monster.label(),
         monster.stats.hitpoints,
         monster.stats.defence
