@@ -119,6 +119,10 @@ pub struct GauntletState {
     /// False while any numeric option input holds text that doesn't parse or
     /// is out of range; the Simulate button is disabled in that case.
     pub options_valid: Signal<bool>,
+    /// Live run state, held here so a simulation survives navigating away from
+    /// the page and back.
+    pub sim_running: Signal<bool>,
+    pub sim_error: Signal<Option<String>>,
 }
 
 impl GauntletState {
@@ -138,6 +142,8 @@ impl GauntletState {
             sim_config: Signal::new(defaults.sim_config),
             num_trials: Signal::new(defaults.num_trials),
             options_valid: Signal::new(true),
+            sim_running: Signal::new(false),
+            sim_error: Signal::new(None),
         }
     }
 

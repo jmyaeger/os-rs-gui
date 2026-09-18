@@ -8,6 +8,7 @@ use super::storage;
 use super::strategy::SpecPlan;
 use super::target::TargetConfig;
 use crate::worker::{CANCELLED, Job, JobOutput};
+use dioxus::core::spawn_forever;
 use dioxus::prelude::*;
 use osrs::types::player::Player;
 use serde::{Deserialize, Serialize};
@@ -325,7 +326,8 @@ impl HomeState {
         let mut status = self.sim_status;
         let mut results = self.results;
         status.write().insert(id, SimStatus::Queued);
-        spawn(async move {
+        // Root-scoped so the run outlives the component that started it.
+        spawn_forever(async move {
             let outcome = crate::worker::run_job(Job::SingleWay(input), move |value| {
                 // Signals are Copy; taking a local copy keeps the callback `Fn`.
                 let mut progress = status;

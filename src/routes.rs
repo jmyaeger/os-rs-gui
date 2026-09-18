@@ -28,8 +28,6 @@ fn Layout() -> Element {
     };
 
     rsx! {
-        document::Link { rel: "stylesheet", href: asset!("/assets/tailwind.css") }
-
         div { class: "min-h-screen px-4 pb-6 mt-2",
             // Header with logo, title, and navigation
             header { class: "w-full max-w-[380px] lg:max-w-7xl mx-auto mb-4 flex items-center justify-between",

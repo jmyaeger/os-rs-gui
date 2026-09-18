@@ -33,7 +33,6 @@ pub fn Home() -> Element {
     let warnings = state.warnings.read().clone();
 
     rsx! {
-        document::Stylesheet { href: asset!("/assets/home.css") }
         div { class: "w-full max-w-[380px] lg:max-w-7xl mx-auto home",
             div { class: "card home-toolbar",
                 div { class: "home-toolbar-name",

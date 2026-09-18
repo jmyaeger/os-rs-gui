@@ -78,16 +78,16 @@ mod web_worker {
         job: String,
     }
 
-    /// Everything the worker can send back. Exactly one of the optional fields is set.
-    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-    struct WorkerMessage {
-        id: u32,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        output: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        error: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        progress: Option<f64>,
+    /// Everything the worker can send back. `Ready` and `InitFailed` come from the
+    /// bootstrap in `assets/worker.js`; the rest come from `start_simulation_worker`.
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[serde(tag = "type", rename_all = "snake_case")]
+    enum Outbound {
+        Ready,
+        InitFailed { error: String },
+        Progress { id: u32, value: f64 },
+        Finished { id: u32, output: String },
+        Failed { id: u32, error: String },
     }
 
     struct Pending {
@@ -95,8 +95,16 @@ mod web_worker {
         on_progress: Box<dyn Fn(f64)>,
     }
 
+    /// Jobs submitted before the bootstrap reports `Ready` wait here; the worker
+    /// has no message handler installed until then.
+    enum Readiness {
+        Waiting(Vec<oneshot::Sender<Result<(), String>>>),
+        Ready,
+    }
+
     struct WorkerState {
         worker: Worker,
+        readiness: Readiness,
         pending: HashMap<u32, Pending>,
         _onmessage: Closure<dyn FnMut(MessageEvent)>,
         _onerror: Closure<dyn FnMut(web_sys::ErrorEvent)>,
@@ -131,99 +139,110 @@ mod web_worker {
         }
     }
 
+    /// Locate the app's wasm-bindgen glue module. `dx` emits it as the document's
+    /// module script, unhashed at `/wasm/os-rs-gui.js` in dev and hashed under
+    /// `/assets/` in release, so the selector matches on the stem alone.
     fn find_js_bundle_url() -> Result<String, String> {
         let document = web_sys::window()
             .ok_or_else(|| "no window".to_string())?
             .document()
             .ok_or_else(|| "no document".to_string())?;
 
-        let selector = r#"script[type="module"][src*="os-rs-gui-"][src$=".js"]"#;
-        let js_url = document
+        let selector = r#"script[type="module"][src*="os-rs-gui"][src$=".js"]"#;
+        document
             .query_selector(selector)
             .map_err(|e| format!("failed to query module script: {e:?}"))?
             .and_then(|el| el.get_attribute("src"))
             .map(normalize_url)
-            .unwrap_or_else(|| "/wasm/os-rs-gui.js".to_string());
-
-        Ok(js_url)
+            .ok_or_else(|| {
+                "could not find the app's module script; the simulation worker \
+                 cannot load the engine"
+                    .to_string()
+            })
     }
 
-    fn create_worker() -> Result<Worker, String> {
+    /// Tear the worker down and fail everyone waiting on it. The next job builds a
+    /// fresh instance, so a failed start is recoverable.
+    fn teardown(message: String) {
+        // Take the state out before touching anything that could re-enter.
+        let Some(state) = WORKER_STATE.with(|cell| cell.borrow_mut().take()) else {
+            return;
+        };
+        state.worker.terminate();
+        if let Readiness::Waiting(waiters) = state.readiness {
+            for waiter in waiters {
+                let _ = waiter.send(Err(message.clone()));
+            }
+        }
+        for pending in state.pending.into_values() {
+            let _ = pending.sender.send(Err(message.clone()));
+        }
+    }
+
+    fn handle_outbound(message: Outbound) {
+        match message {
+            Outbound::Ready => {
+                let waiters = WORKER_STATE.with(|cell| {
+                    let mut state = cell.borrow_mut();
+                    let state = state.as_mut()?;
+                    match std::mem::replace(&mut state.readiness, Readiness::Ready) {
+                        Readiness::Waiting(waiters) => Some(waiters),
+                        Readiness::Ready => None,
+                    }
+                });
+                for waiter in waiters.unwrap_or_default() {
+                    let _ = waiter.send(Ok(()));
+                }
+            }
+            Outbound::InitFailed { error } => {
+                teardown(format!("simulation worker failed to start: {error}"));
+            }
+            Outbound::Progress { id, value } => {
+                WORKER_STATE.with(|cell| {
+                    let state = cell.borrow();
+                    if let Some(pending) = state.as_ref().and_then(|s| s.pending.get(&id)) {
+                        (pending.on_progress)(value);
+                    }
+                });
+            }
+            Outbound::Finished { id, output } => {
+                if let Some(pending) = take_pending(id) {
+                    let result = serde_json::from_str::<JobOutput>(&output)
+                        .map_err(|e| format!("failed to decode worker output: {e}"));
+                    let _ = pending.sender.send(result);
+                }
+            }
+            Outbound::Failed { id, error } => {
+                if let Some(pending) = take_pending(id) {
+                    let _ = pending.sender.send(Err(error));
+                }
+            }
+        }
+    }
+
+    fn take_pending(id: u32) -> Option<Pending> {
+        WORKER_STATE.with(|cell| {
+            cell.borrow_mut()
+                .as_mut()
+                .and_then(|state| state.pending.remove(&id))
+        })
+    }
+
+    /// Create the worker and ask it to load the engine. Its bootstrap answers with
+    /// `Ready` or `InitFailed`.
+    fn start_worker() -> Result<(), String> {
+        let js_url = find_js_bundle_url()?;
+
         let opts = WorkerOptions::new();
         opts.set_type(WorkerType::Module);
-
         let worker_url = asset!("/assets/worker.js").to_string();
-        Worker::new_with_options(&worker_url, &opts)
-            .map_err(|e| format!("failed to create simulation worker: {e:?}"))
-    }
-
-    fn send_init_message(worker: &Worker) -> Result<(), String> {
-        let js_url = find_js_bundle_url()?;
-        let init_msg = js_sys::Object::new();
-        js_sys::Reflect::set(&init_msg, &"type".into(), &"init".into())
-            .map_err(|e| format!("failed to build worker init message: {e:?}"))?;
-        js_sys::Reflect::set(&init_msg, &"js_url".into(), &js_url.into())
-            .map_err(|e| format!("failed to set worker JS URL: {e:?}"))?;
-
-        worker
-            .post_message(&init_msg)
-            .map_err(|e| format!("failed to initialize simulation worker: {e:?}"))
-    }
-
-    fn fail_all_pending(message: String, reset_worker: bool) {
-        WORKER_STATE.with(|state_cell| {
-            let mut state_opt = state_cell.borrow_mut();
-            if reset_worker {
-                if let Some(state) = state_opt.take() {
-                    state.worker.terminate();
-                    for pending in state.pending.into_values() {
-                        let _ = pending.sender.send(Err(message.clone()));
-                    }
-                }
-            } else if let Some(state) = state_opt.as_mut() {
-                for pending in std::mem::take(&mut state.pending).into_values() {
-                    let _ = pending.sender.send(Err(message.clone()));
-                }
-            }
-        });
-    }
-
-    fn handle_message(message: WorkerMessage) {
-        WORKER_STATE.with(|state_cell| {
-            let mut state_opt = state_cell.borrow_mut();
-            let Some(state) = state_opt.as_mut() else {
-                return;
-            };
-            if let Some(progress) = message.progress {
-                if let Some(pending) = state.pending.get(&message.id) {
-                    (pending.on_progress)(progress);
-                }
-                return;
-            }
-            if let Some(pending) = state.pending.remove(&message.id) {
-                let result = match (message.output, message.error) {
-                    (Some(output), _) => serde_json::from_str::<JobOutput>(&output)
-                        .map_err(|e| format!("failed to decode worker output: {e}")),
-                    (None, Some(error)) => Err(error),
-                    (None, None) => Err("worker sent an empty response".to_string()),
-                };
-                let _ = pending.sender.send(result);
-            }
-        });
-    }
-
-    fn ensure_worker() -> Result<(), String> {
-        let already_ready = WORKER_STATE.with(|state_cell| state_cell.borrow().is_some());
-        if already_ready {
-            return Ok(());
-        }
-
-        let worker = create_worker()?;
+        let worker = Worker::new_with_options(&worker_url, &opts)
+            .map_err(|e| format!("failed to create simulation worker: {e:?}"))?;
 
         let onmessage = Closure::wrap(Box::new(move |event: MessageEvent| {
-            match swb::from_value::<WorkerMessage>(event.data()) {
-                Ok(message) => handle_message(message),
-                Err(e) => fail_all_pending(format!("failed to decode worker response: {e}"), true),
+            match swb::from_value::<Outbound>(event.data()) {
+                Ok(message) => handle_outbound(message),
+                Err(e) => teardown(format!("failed to decode worker response: {e}")),
             }
         }) as Box<dyn FnMut(_)>);
 
@@ -233,34 +252,77 @@ mod web_worker {
             } else {
                 format!("worker error occurred: {}", event.message())
             };
-            fail_all_pending(message, true);
+            teardown(message);
         }) as Box<dyn FnMut(_)>);
 
         worker.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
         worker.set_onerror(Some(onerror.as_ref().unchecked_ref()));
 
-        WORKER_STATE.with(|state_cell| {
-            *state_cell.borrow_mut() = Some(WorkerState {
+        WORKER_STATE.with(|cell| {
+            *cell.borrow_mut() = Some(WorkerState {
                 worker: worker.clone(),
+                readiness: Readiness::Waiting(Vec::new()),
                 pending: HashMap::new(),
                 _onmessage: onmessage,
                 _onerror: onerror,
             });
         });
 
-        if let Err(err) = send_init_message(&worker) {
-            fail_all_pending(err.clone(), true);
-            return Err(err);
+        let init = js_sys::Object::new();
+        let set = |key: &str, value: &JsValue| {
+            js_sys::Reflect::set(&init, &key.into(), value)
+                .map(|_| ())
+                .map_err(|e| format!("failed to build worker init message: {e:?}"))
+        };
+        let result = set("type", &"init".into())
+            .and_then(|()| set("js_url", &js_url.into()))
+            .and_then(|()| {
+                worker
+                    .post_message(&init)
+                    .map_err(|e| format!("failed to initialize simulation worker: {e:?}"))
+            });
+
+        if let Err(error) = result {
+            teardown(error.clone());
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    /// Resolve once the worker is able to serve jobs, starting one if needed.
+    async fn ensure_ready() -> Result<(), String> {
+        if WORKER_STATE.with(|cell| cell.borrow().is_none()) {
+            start_worker()?;
         }
 
-        Ok(())
+        let waiter = WORKER_STATE.with(|cell| {
+            let mut state = cell.borrow_mut();
+            let state = state
+                .as_mut()
+                .ok_or_else(|| "simulation worker is not available".to_string())?;
+            Ok::<_, String>(match &mut state.readiness {
+                Readiness::Ready => None,
+                Readiness::Waiting(waiters) => {
+                    let (sender, receiver) = oneshot::channel();
+                    waiters.push(sender);
+                    Some(receiver)
+                }
+            })
+        })?;
+
+        match waiter {
+            None => Ok(()),
+            Some(receiver) => receiver
+                .await
+                .map_err(|_| "simulation worker stopped before it was ready".to_string())?,
+        }
     }
 
     pub async fn run_job(
         job: Job,
         on_progress: impl Fn(f64) + 'static,
     ) -> Result<JobOutput, String> {
-        ensure_worker()?;
+        ensure_ready().await?;
 
         let id = next_request_id();
         let job = serde_json::to_string(&job).map_err(|e| format!("failed to encode job: {e}"))?;
@@ -269,9 +331,9 @@ mod web_worker {
             swb::to_value(&request).map_err(|e| format!("failed to encode worker request: {e}"))?;
         let (sender, receiver) = oneshot::channel();
 
-        WORKER_STATE.with(|state_cell| {
-            let mut state_opt = state_cell.borrow_mut();
-            let state = state_opt
+        WORKER_STATE.with(|cell| {
+            let mut state = cell.borrow_mut();
+            let state = state
                 .as_mut()
                 .ok_or_else(|| "simulation worker is not available".to_string())?;
 
@@ -298,7 +360,7 @@ mod web_worker {
     /// Terminate the worker, failing every pending job with `CANCELLED`. The next
     /// job creates a fresh worker.
     pub fn cancel_jobs() {
-        fail_all_pending(CANCELLED.to_string(), true);
+        teardown(CANCELLED.to_string());
     }
 
     #[wasm_bindgen]
@@ -308,24 +370,28 @@ mod web_worker {
         let global = js_sys::global();
         let scope = DedicatedWorkerGlobalScope::unchecked_from_js(global.into());
 
-        let post =
-            move |scope: &DedicatedWorkerGlobalScope, message: WorkerMessage| match swb::to_value(
-                &message,
-            ) {
+        let post = move |scope: &DedicatedWorkerGlobalScope, message: Outbound| {
+            match swb::to_value(&message) {
                 Ok(value) => {
                     let _ = scope.post_message(&value);
                 }
                 Err(e) => {
-                    let fallback = WorkerMessage {
-                        id: message.id,
-                        error: Some(format!("Failed to encode response: {e}")),
-                        ..Default::default()
+                    let id = match message {
+                        Outbound::Progress { id, .. }
+                        | Outbound::Finished { id, .. }
+                        | Outbound::Failed { id, .. } => id,
+                        _ => 0,
+                    };
+                    let fallback = Outbound::Failed {
+                        id,
+                        error: format!("Failed to encode response: {e}"),
                     };
                     if let Ok(value) = swb::to_value(&fallback) {
                         let _ = scope.post_message(&value);
                     }
                 }
-            };
+            }
+        };
 
         let scope_clone = scope.clone();
         let onmessage = Closure::wrap(Box::new(move |event: web_sys::MessageEvent| {
@@ -340,10 +406,9 @@ mod web_worker {
                         .unwrap_or_default();
                     post(
                         &scope_clone,
-                        WorkerMessage {
+                        Outbound::Failed {
                             id,
-                            error: Some(format!("Failed to decode request: {e}")),
-                            ..Default::default()
+                            error: format!("Failed to decode request: {e}"),
                         },
                     );
                     return;
@@ -352,15 +417,8 @@ mod web_worker {
 
             let id = request.id;
             let progress_scope = scope_clone.clone();
-            let mut report = |progress: f64| {
-                post(
-                    &progress_scope,
-                    WorkerMessage {
-                        id,
-                        progress: Some(progress),
-                        ..Default::default()
-                    },
-                );
+            let mut report = |value: f64| {
+                post(&progress_scope, Outbound::Progress { id, value });
             };
             let outcome = serde_json::from_str::<Job>(&request.job)
                 .map_err(|e| format!("Failed to decode job: {e}"))
@@ -370,16 +428,8 @@ mod web_worker {
                         .map_err(|e| format!("Failed to encode output: {e}"))
                 });
             let message = match outcome {
-                Ok(output) => WorkerMessage {
-                    id,
-                    output: Some(output),
-                    ..Default::default()
-                },
-                Err(error) => WorkerMessage {
-                    id,
-                    error: Some(error),
-                    ..Default::default()
-                },
+                Ok(output) => Outbound::Finished { id, output },
+                Err(error) => Outbound::Failed { id, error },
             };
             post(&scope_clone, message);
         }) as Box<dyn Fn(web_sys::MessageEvent)>);

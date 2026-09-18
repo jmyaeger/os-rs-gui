@@ -7,3 +7,4 @@
 **/*.rs.bk
 
 **/.venv
+assets/tailwind.css

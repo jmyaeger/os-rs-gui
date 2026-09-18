@@ -1,13 +1,61 @@
 use crate::components::plots::{FoodHistogram, TimeUnit, TtkCdf};
 use crate::pages::gauntlet::simulation::build_simulation_input;
 use crate::pages::gauntlet::state::GauntletState;
+use dioxus::core::spawn_forever;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::{error, info};
 
+/// Run the Gauntlet simulation in the shared worker, recording the outcome on
+/// `GauntletState`. Root-scoped so the run outlives the page.
+fn start_simulation(state: GauntletState) {
+    let mut running = state.sim_running;
+    let mut sim_error = state.sim_error;
+    let mut results = state.results;
+
+    if *running.peek() {
+        return;
+    }
+    running.set(true);
+    sim_error.set(None);
+
+    let input = build_simulation_input(&state.snapshot());
+    spawn_forever(async move {
+        let outcome = crate::worker::run_job(crate::worker::Job::Gauntlet(input), |_| {}).await;
+        running.set(false);
+
+        let message = match outcome {
+            Ok(crate::worker::JobOutput::Gauntlet(output)) if output.success => {
+                match output.stats {
+                    Some(stats) => {
+                        results.set(Some(stats));
+                        info!("Simulation completed successfully");
+                        None
+                    }
+                    None => Some("Simulation completed without stats".to_string()),
+                }
+            }
+            Ok(crate::worker::JobOutput::Gauntlet(output)) => Some(
+                output
+                    .error
+                    .unwrap_or_else(|| "Unknown simulation error".to_string()),
+            ),
+            Ok(other) => Some(format!("Unexpected worker response: {other:?}")),
+            // Cancelling is a deliberate act, not a failure to report.
+            Err(err) if err == crate::worker::CANCELLED => None,
+            Err(err) => Some(err),
+        };
+
+        if let Some(message) = message {
+            error!("Simulation failed: {message}");
+            sim_error.set(Some(message));
+        }
+    });
+}
+
 #[component]
-fn SimulateButton(mut simulate: Action<(), ()>) -> Element {
+fn SimulateButton() -> Element {
     let state = use_context::<GauntletState>();
-    let is_pending = simulate.pending();
+    let is_pending = state.sim_running.cloned();
     let options_valid = state.options_valid.cloned();
 
     rsx! {
@@ -18,7 +66,7 @@ fn SimulateButton(mut simulate: Action<(), ()>) -> Element {
                 title: if !options_valid { "Fix the highlighted options before simulating" },
                 onclick: move |_| {
                     info!("Simulate button clicked");
-                    simulate.call();
+                    start_simulation(state);
                 },
 
                 if is_pending {
@@ -30,13 +78,6 @@ fn SimulateButton(mut simulate: Action<(), ()>) -> Element {
             }
         }
     }
-}
-
-fn simulation_error(simulate: &Action<(), ()>) -> Option<String> {
-    simulate.value().and_then(|result| match result {
-        Ok(_) => None,
-        Err(err) => Some(err.to_string()),
-    })
 }
 
 fn mean_from_pmf(pmf: &[f64]) -> f64 {
@@ -74,41 +115,13 @@ fn SectionTitle(text: String) -> Element {
 #[component]
 pub fn SimulationResults() -> Element {
     let state = use_context::<GauntletState>();
-    let simulate = use_action(move || async move {
-        let input = build_simulation_input(&state.snapshot());
-
-        let output = match crate::worker::run_job(crate::worker::Job::Gauntlet(input), |_| {})
-            .await
-            .map_err(anyhow::Error::msg)?
-        {
-            crate::worker::JobOutput::Gauntlet(output) => output,
-            other => return Err(anyhow::anyhow!("unexpected worker response: {other:?}")),
-        };
-
-        if output.success {
-            let stats = output
-                .stats
-                .ok_or_else(|| anyhow::anyhow!("Simulation completed without stats"))?;
-            let mut results = state.results;
-            results.set(Some(stats));
-            info!("Simulation completed successfully");
-            Ok(())
-        } else {
-            let err = output
-                .error
-                .unwrap_or_else(|| "Unknown simulation error".to_string());
-            error!("Simulation failed: {err}");
-            Err(anyhow::anyhow!(err))
-        }
-    });
-
     let mut time_unit = use_signal(|| TimeUnit::Seconds);
-    let error_msg = simulation_error(&simulate);
+    let error_msg = state.sim_error.cloned();
 
     rsx! {
         div { class: "space-y-4",
 
-            SimulateButton { simulate }
+            SimulateButton {}
 
             if let Some(err) = error_msg {
                 div { class: "px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm",
