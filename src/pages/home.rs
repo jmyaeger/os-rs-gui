@@ -29,7 +29,6 @@ pub fn Home() -> Element {
     let monster = use_memo(move || state.target.read().combat_monster());
     use_effect(move || state.persist_results());
     use_effect(move || state.persist_draft(&player.read()));
-    let origin = state.origin(&player.read());
     let warnings = state.warnings.read().clone();
 
     rsx! {

@@ -237,19 +237,6 @@ impl HomeState {
         }
     }
 
-    /// The result the editor currently mirrors, and whether it has been edited since.
-    pub fn origin(&self, player: &Player) -> Option<(usize, bool)> {
-        let id = (*self.loaded_from.read())?;
-        let results = self.results.read();
-        let index = results.iter().position(|entry| entry.id == id)?;
-        let entry = &results[index];
-        let unchanged = entry.loadout == LoadoutSpec::from_player(player)
-            && entry.target == *self.target.read()
-            && entry.plan == *self.plan.read()
-            && entry.sim_options == *self.sim.read();
-        Some((index, unchanged))
-    }
-
     /// Snapshot the editor into a new result. Returns its id.
     pub fn add_result(&mut self, player: &Player) -> u32 {
         let id = self
