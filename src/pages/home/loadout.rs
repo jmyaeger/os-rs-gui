@@ -238,8 +238,8 @@ fn EquipmentBonuses() -> Element {
                 thead {
                     tr {
                         th { scope: "col", aria_label: "Combat style" }
-                        th { scope: "col", title: "Attack bonus", "Atk" }
-                        th { scope: "col", title: "Defence bonus", "Def" }
+                        th { scope: "col", title: "Attack bonus", "Attack" }
+                        th { scope: "col", title: "Defence bonus", "Defence" }
                     }
                 }
                 tbody {
