@@ -45,15 +45,6 @@ pub fn Home() -> Element {
                         maxlength: "80",
                         oninput: move |event| state.name.set(event.value()),
                     }
-                    if let Some((index, unchanged)) = origin {
-                        span { class: "home-muted home-toolbar-status",
-                            if unchanged {
-                                "Same as result {result_letter(index)}"
-                            } else {
-                                "Edited since result {result_letter(index)}"
-                            }
-                        }
-                    }
                 }
                 div { class: "home-toolbar-actions",
                     button {

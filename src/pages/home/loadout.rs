@@ -282,7 +282,6 @@ pub fn PlayerPanel() -> Element {
         div { class: "loadout-column loadout-player",
             div { class: "loadout-column-header",
                 h3 { "Player" }
-                span { class: "home-muted", "base → boosted" }
             }
             HiscoreImport {}
             div { class: "loadout-stats-grid",
@@ -481,6 +480,21 @@ impl Skill {
         player.calc_potion_boosts();
         player.reset_current_stats(false);
     }
+
+    fn set_current(self, player: &mut Player, level: u32) {
+        let stat = match self {
+            Self::Attack => &mut player.stats.attack,
+            Self::Strength => &mut player.stats.strength,
+            Self::Defence => &mut player.stats.defence,
+            Self::Ranged => &mut player.stats.ranged,
+            Self::Magic => &mut player.stats.magic,
+            Self::Hitpoints => &mut player.stats.hitpoints,
+            Self::Prayer => &mut player.stats.prayer,
+            Self::Mining => &mut player.stats.mining,
+            Self::Herblore => &mut player.stats.herblore,
+        };
+        stat.current = level;
+    }
 }
 
 #[component]
@@ -494,6 +508,32 @@ fn SkillField(skill: Skill) -> Element {
                 alt: "",
             }
             span { class: "loadout-stat-name", "{skill.name()}" }
+
+            if ["Hitpoints", "Prayer"].contains(&skill.name()) {
+                input {
+                    class: "input-field num",
+                    r#type: "number",
+                    min: "1",
+                    max: "200",
+                    aria_label: "Current {skill.name()} level",
+                    value: "{stat.current}",
+                    oninput: move |event| {
+                        if let Ok(level) = event.value().parse::<u32>() && (1..=200).contains(&level) {
+                            skill.set_current(&mut player.write(), level)
+                        }
+                    },
+                }
+            } else {
+                span {
+                    class: if stat.current > stat.base { "loadout-stat-current num is-boosted" } else { "loadout-stat-current num" },
+                    title: "Current {skill.name()}",
+                    "{stat.current}"
+                }
+            }
+
+            span {
+                p { "/" }
+            }
             input {
                 class: "input-field num",
                 r#type: "number",
@@ -509,11 +549,7 @@ fn SkillField(skill: Skill) -> Element {
                     }
                 },
             }
-            span {
-                class: if stat.current > stat.base { "loadout-stat-current num is-boosted" } else { "loadout-stat-current num" },
-                title: "Boosted {skill.name()}",
-                "{stat.current}"
-            }
+
         }
     }
 }

@@ -745,7 +745,7 @@ input[type="checkbox"] {
 
 .loadout-stat {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
@@ -765,8 +765,8 @@ input[type="checkbox"] {
 }
 
 .loadout-stat .input-field {
-  width: 2.9rem;
-  min-height: 2rem;
+  width: 2.5rem;
+  min-height: 1.5rem;
   padding: 0 0.2rem;
   text-align: center;
   font-size: 0.85rem;
@@ -1720,6 +1720,7 @@ input[type="checkbox"] {
 }
 
 @container (max-width: 20rem) {
+
   .loadout-stats-grid,
   .loadout-conditions,
   .target-stats,
@@ -1821,7 +1822,7 @@ input[type="checkbox"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .gauntlet-sidebar > :last-child {
+  .gauntlet-sidebar> :last-child {
     grid-column: 1 / -1;
   }
 }
@@ -1877,6 +1878,7 @@ input[type="checkbox"] {
 }
 
 @media (pointer: coarse) {
+
   .home-button,
   .home-text-button,
   .home-icon-button,
