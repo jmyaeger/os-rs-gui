@@ -10,17 +10,18 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 const FONT_FAMILY: &str = "'Jost', ui-sans-serif, system-ui, sans-serif";
 const AXIS_TITLE_FONT_SIZE: usize = 13;
-const TICK_FONT_SIZE: usize = 11;
-const LEGEND_FONT_SIZE: usize = 11;
+const TICK_FONT_SIZE: usize = 12;
+const LEGEND_FONT_SIZE: usize = 12;
 const HOVER_FONT_SIZE: usize = 12;
-const PLOT_BG_COLOR: &str = "rgba(17, 24, 39, 0)"; // transparent
-const PAPER_BG_COLOR: &str = "rgba(17, 24, 39, 0)"; // transparent
-const GRID_COLOR: &str = "rgba(75, 85, 99, 0.3)"; // gray-600 with opacity
-const AXIS_LINE_COLOR: &str = "rgba(107, 114, 128, 0.5)"; // gray-500 with opacity
-const TEXT_COLOR: &str = "#e5e7eb"; // gray-200
-const LEGEND_BG_COLOR: &str = "rgba(31, 41, 55, 0.95)"; // gray-800 with opacity
-const HOVER_BG_COLOR: &str = "rgba(31, 41, 55, 0.95)"; // gray-800 near-opaque
-const HOVER_BORDER_COLOR: &str = "rgba(75, 85, 99, 0.5)"; // gray-600
+// Match the neutral palette in styles/app.css; Plotly needs concrete colors.
+const PLOT_BG_COLOR: &str = "rgba(0, 0, 0, 0)";
+const PAPER_BG_COLOR: &str = "rgba(0, 0, 0, 0)";
+const GRID_COLOR: &str = "rgba(63, 68, 71, 0.6)";
+const AXIS_LINE_COLOR: &str = "rgb(100, 107, 111)";
+const TEXT_COLOR: &str = "rgb(231, 233, 230)";
+const LEGEND_BG_COLOR: &str = "rgb(27, 30, 32)";
+const HOVER_BG_COLOR: &str = "rgb(36, 40, 43)";
+const HOVER_BORDER_COLOR: &str = "rgb(100, 107, 111)";
 pub const TRACE_COLORS: [&str; 8] = [
     "#a78bfa", // soft violet
     "#3ec9a7", // teal

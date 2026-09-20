@@ -57,7 +57,7 @@ pub fn PrayerSelect(#[props(default = true)] show_header: bool) -> Element {
             button {
                 r#type: "button",
                 aria_expanded: "{!is_collapsed()}",
-                class: "flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors",
+                class: "flex items-center justify-between cursor-pointer p-2 hover:bg-surface2 rounded transition-colors",
                 onclick: move |_| is_collapsed.set(!is_collapsed()),
                 div { class: "flex items-center gap-4",
                     h3 { class: "text-sm font-semibold card-title w-12", "Prayers" }
@@ -89,7 +89,7 @@ pub fn PrayerSelect(#[props(default = true)] show_header: bool) -> Element {
                     }
                 }
                 div {
-                    class: "text-xs text-gray-400 transform transition-transform",
+                    class: "text-xs text-muted transform transition-transform",
                     class: if is_collapsed() { "" } else { "rotate-180" },
                     "▼"
                 }
@@ -130,9 +130,9 @@ pub fn PrayerSelect(#[props(default = true)] show_header: bool) -> Element {
 fn PrayerButton(prayer: Prayer, is_active: bool, on_click: EventHandler<Prayer>) -> Element {
     let img_path = get_prayer_img_path(prayer);
     let button_class = if is_active {
-        "relative w-8 h-8 bg-gray-700 rounded-full cursor-pointer transition-all duration-150 hover:scale-105 flex items-center justify-center"
+        "relative w-8 h-8 bg-line rounded-full cursor-pointer transition-colors duration-150 flex items-center justify-center"
     } else {
-        "relative w-8 h-8 bg-gray-800 rounded-full cursor-pointer transition-all duration-150 hover:bg-gray-700 hover:scale-105 flex items-center justify-center"
+        "relative w-8 h-8 bg-surface2 rounded-full cursor-pointer transition-colors duration-150 hover:bg-line flex items-center justify-center"
     };
 
     rsx! {

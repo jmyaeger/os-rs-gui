@@ -33,7 +33,7 @@ pub fn Home() -> Element {
     let warnings = state.warnings.read().clone();
 
     rsx! {
-        div { class: "w-full max-w-[380px] lg:max-w-7xl mx-auto home",
+        div { class: "home",
             div { class: "card home-toolbar",
                 div { class: "home-toolbar-name",
                     span { class: "card-title", "Setup" }

@@ -28,58 +28,37 @@ fn Layout() -> Element {
     };
 
     rsx! {
-        div { class: "min-h-screen px-4 pb-6 mt-2",
-            // Header with logo, title, and navigation
-            header { class: "w-full max-w-[380px] lg:max-w-7xl mx-auto mb-4 flex items-center justify-between",
-                // Left: Logo + page title
-                div { class: "flex items-center gap-3",
+        div { class: "app-shell",
+            a { class: "skip-link", href: "#main-content", "Skip to content" }
+            header { class: "app-header app-width",
+                div { class: "app-brand",
                     Link { to: Route::Home {},
                         img {
                             src: RUNESIM_LOGO,
                             alt: "RuneSim",
-                            class: "h-6 lg:h-8",
+                            class: "app-logo",
                         }
                     }
-                    span { class: "text-sm lg:text-xl text-gray-200 font-light", "{page_title}" }
+                    h1 { class: "app-title", "{page_title}" }
                 }
 
-                // Right: Navigation
-                nav { class: "flex items-center gap-4 text-xs lg:text-sm",
+                nav { class: "app-nav", aria_label: "Main navigation",
                     Link {
                         to: Route::Home {},
-                        class: "text-gray-400 hover:text-gray-200 transition-colors",
+                        aria_current: if route == (Route::Home {}) { "page" } else { "false" },
                         "DPS Calculator"
                     }
-
-                    // Simulations dropdown
-                    div { class: "relative group",
-                        button { class: "text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1",
-                            "Simulations"
-                            svg {
-                                class: "w-3 h-3 transition-transform group-hover:rotate-180",
-                                fill: "none",
-                                stroke: "currentColor",
-                                stroke_width: "2",
-                                view_box: "0 0 24 24",
-                                path { d: "M19 9l-7 7-7-7" }
-                            }
-                        }
-                        // Dropdown menu
-                        div { class: "absolute right-0 top-full pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all",
-                            div { class: "bg-gray-800 border border-gray-700 rounded-lg py-1 min-w-[140px] shadow-lg",
-                                Link {
-                                    to: Route::Gauntlet {},
-                                    class: "block px-4 py-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-colors",
-                                    "Gauntlet"
-                                }
-                            }
-                        }
+                    Link {
+                        to: Route::Gauntlet {},
+                        aria_current: if route == (Route::Gauntlet {}) { "page" } else { "false" },
+                        "Gauntlet"
                     }
                 }
             }
 
-            // Page content
-            Outlet::<Route> {}
+            main { id: "main-content", tabindex: "-1", class: "app-width",
+                Outlet::<Route> {}
+            }
         }
     }
 }

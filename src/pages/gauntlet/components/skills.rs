@@ -41,7 +41,7 @@ pub fn SkillSelect() -> Element {
             div { class: "col-span-2 flex items-center gap-2 rounded px-1 py-1",
                 input {
                     "type": "text",
-                    class: "flex-1 min-w-0 h-7 text-sm px-2 input-field rounded text-white placeholder-gray-400 focus:outline-none",
+                    class: "flex-1 min-w-0 h-7 text-sm px-2 input-field rounded text-white placeholder-muted",
                     placeholder: "Enter RSN...",
                     value: "{rsn_input}",
                     disabled: is_loading(),
@@ -57,7 +57,7 @@ pub fn SkillSelect() -> Element {
                     },
                 }
                 button {
-                    class: "h-7 px-3 btn-accent disabled:bg-gray-500 disabled:cursor-not-allowed rounded text-xs shrink-0",
+                    class: "home-button shrink-0",
                     disabled: rsn_input.read().trim().is_empty() || is_loading(),
                     onclick: lookup_stats,
                     if is_loading() {
@@ -70,7 +70,7 @@ pub fn SkillSelect() -> Element {
 
             // Error message display
             if let Some(error) = error_message.read().as_ref() {
-                div { class: "col-span-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-red-300 text-sm",
+                div { class: "col-span-2 p-2 bg-error/10 border border-error/30 rounded text-error text-sm",
                     "{error}"
                 }
             }
@@ -79,7 +79,7 @@ pub fn SkillSelect() -> Element {
             for skill in COMBAT_SKILLS.iter() {
                 SkillDisplay { skill: *skill }
             }
-        
+
         }
     }
 }
@@ -90,10 +90,10 @@ pub fn SkillDisplay(skill: Skill) -> Element {
     let base_level = get_skill_level(&player.read(), skill);
     rsx! {
         div { class: "flex items-center justify-between py-1 px-1 rounded",
-            span { class: "text-sm text-gray-400", "{skill.name()}" }
+            span { class: "text-sm text-muted", "{skill.name()}" }
             input {
                 "type": "number",
-                class: "w-10 h-7 text-sm px-1 input-field rounded text-center text-white num focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                class: "w-10 h-7 text-sm px-1 input-field rounded text-center text-white num [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                 min: "1",
                 max: "99",
                 value: "{base_level}",

@@ -6,7 +6,7 @@
   line-height: 1.45;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--panel-gap);
 }
 
 button,
@@ -14,7 +14,9 @@ select {
   cursor: pointer;
 }
 
-button:disabled {
+button:disabled,
+input:disabled,
+select:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -30,17 +32,8 @@ select {
   color-scheme: dark;
 }
 
-:focus-visible {
-  outline: 2px solid rgb(var(--accent) / 0.8);
-  outline-offset: 2px;
-}
-
 img {
   max-width: 100%;
-}
-
-.card-title {
-  font-size: 0.8125rem;
 }
 
 /* Text helpers */
@@ -78,9 +71,9 @@ img {
 
 /* Controls */
 .input-field {
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0.3rem 0.55rem;
-  min-height: 2.1rem;
+  min-height: var(--control-height);
   color: rgb(var(--text));
   min-width: 0;
   font-size: 0.875rem;
@@ -114,9 +107,10 @@ input[type="checkbox"] {
   align-items: center;
   gap: 0.4rem;
   background: rgb(var(--surface2));
-  border: 1px solid rgb(var(--border) / 0.6);
-  border-radius: 3px;
+  border: 1px solid rgb(var(--control-border));
+  border-radius: var(--radius);
   padding: 0.4rem 0.8rem;
+  min-height: var(--control-height);
   font-size: 0.85rem;
   color: rgb(var(--text) / 0.9);
   white-space: nowrap;
@@ -124,14 +118,15 @@ input[type="checkbox"] {
 }
 
 .home-button:hover:not(:disabled) {
-  background: rgb(var(--border) / 0.45);
-  border-color: rgb(var(--border));
+  background: rgb(var(--border));
+  border-color: rgb(var(--muted));
 }
 
 .home-text-button {
   background: none;
   border: 0;
   padding: 0.1rem 0;
+  min-height: 1.5rem;
   color: rgb(var(--text) / 0.8);
   font-size: 0.8125rem;
   white-space: nowrap;
@@ -154,10 +149,12 @@ input[type="checkbox"] {
   background: none;
   border: 0;
   padding: 0.15rem 0.35rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
   color: rgb(var(--muted));
   font-size: 1rem;
   line-height: 1;
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .home-icon-button:hover:not(:disabled) {
@@ -172,6 +169,7 @@ input[type="checkbox"] {
   color: rgb(var(--text) / 0.8);
   font-size: 0.8125rem;
   width: 6rem;
+  min-height: 1.75rem;
 }
 
 .home-add-select option {
@@ -187,6 +185,7 @@ input[type="checkbox"] {
   color: rgb(var(--muted));
   cursor: pointer;
   min-width: 0;
+  min-height: 1.75rem;
 }
 
 .home-check.is-on {
@@ -195,8 +194,8 @@ input[type="checkbox"] {
 
 .home-segmented {
   display: inline-flex;
-  border: 1px solid rgb(var(--border) / 0.6);
-  border-radius: 3px;
+  border: 1px solid rgb(var(--control-border));
+  border-radius: var(--radius);
   overflow: hidden;
 }
 
@@ -204,8 +203,10 @@ input[type="checkbox"] {
   background: rgb(var(--surface));
   border: 0;
   padding: 0.25rem 0.65rem;
-  font-size: 0.78rem;
+  min-height: 2rem;
+  font-size: 0.8125rem;
   color: rgb(var(--muted));
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .home-segmented button+button {
@@ -213,8 +214,19 @@ input[type="checkbox"] {
 }
 
 .home-segmented button.is-active {
-  background: rgb(var(--border) / 0.5);
+  background: rgb(var(--border));
   color: rgb(var(--text));
+  box-shadow: inset 0 -2px rgb(var(--accent));
+}
+
+.home-segmented button:hover:not(:disabled) {
+  background: rgb(var(--surface2));
+  color: rgb(var(--text));
+}
+
+/* Keep focus visible inside the segmented control's clipped corners. */
+.home-segmented button:focus-visible {
+  outline-offset: -3px;
 }
 
 /* Chips */
@@ -224,7 +236,7 @@ input[type="checkbox"] {
   gap: 0.35rem;
   background: rgb(var(--surface2) / 0.9);
   border: 1px solid rgb(var(--border) / 0.55);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0.2rem 0.45rem;
   font-size: 0.8rem;
   color: rgb(var(--text) / 0.88);
@@ -248,6 +260,7 @@ input[type="checkbox"] {
 .home-chip.is-toggle {
   cursor: pointer;
   text-transform: capitalize;
+  min-height: 1.75rem;
 }
 
 .home-chip.is-toggle.is-on {
@@ -265,9 +278,15 @@ input[type="checkbox"] {
 }
 
 .home-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   background: none;
   border: 0;
-  padding: 0 0 0 0.1rem;
+  padding: 0;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
   color: rgb(var(--muted));
   font-size: 0.9rem;
   line-height: 1;
@@ -275,6 +294,38 @@ input[type="checkbox"] {
 
 .home-chip-remove:hover {
   color: rgb(var(--text));
+}
+
+/* Shared search and select menus use the same surface and selection states. */
+.picker-menu {
+  z-index: 30;
+  padding: 0.25rem;
+  background: rgb(var(--surface2));
+  border: 1px solid rgb(var(--control-border));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-popover);
+  overscroll-behavior: contain;
+}
+
+.picker-option {
+  display: block;
+  width: 100%;
+  min-height: var(--control-height);
+  border-radius: var(--radius);
+  color: rgb(var(--text));
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-option:hover,
+.picker-option:focus-visible,
+.picker-option.is-highlighted,
+.picker-option[data-highlighted] {
+  background: rgb(var(--border));
+}
+
+.picker-option:focus-visible {
+  outline-offset: -2px;
 }
 
 /* Search dropdown rows (shared SearchBar) */
@@ -314,6 +365,7 @@ input[type="checkbox"] {
   gap: 0.9rem;
   min-width: 0;
   flex: 1;
+  flex-wrap: wrap;
 }
 
 .home-toolbar-name .card-title {
@@ -324,21 +376,24 @@ input[type="checkbox"] {
 .home-name-input {
   background: transparent;
   border: 0;
-  border-bottom: 1px solid transparent;
+  border-bottom: 1px solid rgb(var(--control-border));
   padding: 0.2rem 0;
   font-size: 1.05rem;
   font-weight: 500;
   color: rgb(var(--text));
   width: min(22rem, 100%);
+  max-width: 22rem;
+  min-width: 0;
+  min-height: var(--control-height);
+  flex: 1 1 10rem;
 }
 
 .home-name-input::placeholder {
-  color: rgb(var(--muted) / 0.7);
+  color: rgb(var(--muted));
   font-weight: 400;
 }
 
 .home-name-input:focus {
-  outline: none;
   border-bottom-color: rgb(var(--accent));
 }
 
@@ -350,14 +405,15 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 /* Editor grid: Loadout + Special attacks on the left, Monster alongside. */
 .home-editor {
   display: grid;
-  grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(21rem, 1fr);
   grid-template-rows: auto auto;
-  gap: 1rem;
+  gap: var(--panel-gap);
 }
 
 .home-editor>div {
@@ -395,12 +451,14 @@ input[type="checkbox"] {
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .home-panel-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 /* Loadout card */
@@ -445,7 +503,7 @@ input[type="checkbox"] {
 .loadout-column-header h3 {
   margin: 0;
   font-size: 0.9rem;
-  font-weight: 550;
+  font-weight: 600;
   color: rgb(var(--text));
 }
 
@@ -466,7 +524,7 @@ input[type="checkbox"] {
 
 .loadout-search .input-field,
 .target-search .input-field {
-  height: 2.2rem;
+  height: var(--control-height);
   font-size: 0.85rem;
 }
 
@@ -481,7 +539,7 @@ input[type="checkbox"] {
   flex: 0 0 auto;
   padding: 0.4rem;
   border: 1px solid rgb(var(--border) / 0.4);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: rgb(var(--bg) / 0.35);
 }
 
@@ -501,7 +559,7 @@ input[type="checkbox"] {
 .equipment-slot {
   position: relative;
   border-width: 1px;
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .equipment-slot:disabled {
@@ -527,11 +585,11 @@ input[type="checkbox"] {
   color: rgb(var(--text));
   background: rgb(var(--bg));
   border: 1px solid rgb(var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-size: 0.8rem;
   line-height: 1.3;
   pointer-events: none;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.5);
+  box-shadow: var(--shadow-popover);
 }
 
 .equipment-slot:hover .slot-tooltip,
@@ -708,7 +766,7 @@ input[type="checkbox"] {
 
 .loadout-stat .input-field {
   width: 2.9rem;
-  min-height: 1.75rem;
+  min-height: 2rem;
   padding: 0 0.2rem;
   text-align: center;
   font-size: 0.85rem;
@@ -729,15 +787,20 @@ input[type="checkbox"] {
   margin-top: 0;
 }
 
-.loadout-prayers .prayer-icon-button,
-.loadout-player .prayer-icon-button {
+.prayer-icon-button {
   border: 1px solid transparent;
   padding: 0;
+  /* Match the circular prayer backgrounds in the in-game interface. */
+  border-radius: 50%;
 }
 
-.loadout-player .prayer-icon-button[aria-pressed="true"] {
+.prayer-icon-button[aria-pressed="true"] {
   border-color: rgb(var(--accent));
   background: rgb(var(--accent) / 0.2);
+}
+
+.prayer-icon-button:hover {
+  background: rgb(var(--border));
 }
 
 .loadout-chips {
@@ -780,8 +843,9 @@ input[type="checkbox"] {
   gap: 0.1rem;
   min-width: 0;
   padding: 0.5rem 0.65rem;
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: rgb(var(--bg) / 0.5);
+  border: 1px solid transparent;
 }
 
 .metric-tile dt {
@@ -921,13 +985,13 @@ input[type="checkbox"] {
 }
 
 .target-stat>strong {
-  font-weight: 550;
+  font-weight: 600;
   font-size: 0.875rem;
 }
 
 .target-stat .input-field {
   width: 4.4rem;
-  min-height: 1.75rem;
+  min-height: 2rem;
   padding: 0 0.3rem;
   text-align: right;
 }
@@ -1008,7 +1072,7 @@ input[type="checkbox"] {
   margin: 0;
   padding: 0.7rem 0.9rem;
   border: 1px dashed rgb(var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius);
   color: rgb(var(--muted));
   font-size: 0.85rem;
 }
@@ -1022,7 +1086,7 @@ input[type="checkbox"] {
 .strategy-row {
   padding: 0.75rem;
   border: 1px solid rgb(var(--border) / 0.5);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: rgb(var(--bg) / 0.35);
 }
 
@@ -1107,13 +1171,14 @@ input[type="checkbox"] {
 .strategy-condition-value {
   width: 3.6rem;
   background: rgb(var(--bg) / 0.6);
-  border: 1px solid rgb(var(--border) / 0.6);
-  border-radius: 3px;
+  border: 1px solid rgb(var(--control-border));
+  border-radius: var(--radius);
   padding: 0 0.25rem;
   text-align: center;
   font-size: 0.78rem;
   color: rgb(var(--text));
   appearance: textfield;
+  min-height: 1.75rem;
 }
 
 .strategy-condition-value::-webkit-outer-spin-button,
@@ -1165,7 +1230,7 @@ input[type="checkbox"] {
 
 .home-run-button {
   padding: 0.55rem 1.35rem;
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-size: 0.9rem;
   border: 0;
 }
@@ -1210,7 +1275,7 @@ input[type="checkbox"] {
 .results-count {
   color: rgb(var(--muted));
   border: 1px solid rgb(var(--border) / 0.6);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0 0.4rem;
   font-size: 0.78rem;
 }
@@ -1219,6 +1284,7 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .results-empty {
@@ -1237,14 +1303,15 @@ input[type="checkbox"] {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Retain empty columns so adding or removing results never stretches cards. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 23rem), 1fr));
   gap: 0.9rem;
   align-items: start;
 }
 
 .result-card {
   padding: 0.9rem;
-  border: 1px solid var(--result-color);
+  border-top: 2px solid var(--result-color);
   min-width: 0;
 }
 
@@ -1266,7 +1333,7 @@ input[type="checkbox"] {
   place-items: center;
   border: 1px solid var(--result-color);
   color: var(--result-color);
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-size: 0.82rem;
 }
 
@@ -1279,7 +1346,7 @@ input[type="checkbox"] {
   width: 100%;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid transparent;
+  border-bottom: 1px solid rgb(var(--control-border));
   padding: 0;
   font-size: 0.95rem;
   font-weight: 600;
@@ -1287,11 +1354,10 @@ input[type="checkbox"] {
 }
 
 .result-name-input:hover {
-  border-bottom-color: rgb(var(--border));
+  border-bottom-color: rgb(var(--muted));
 }
 
 .result-name-input:focus {
-  outline: none;
   border-bottom-color: rgb(var(--accent));
 }
 
@@ -1443,7 +1509,7 @@ input[type="checkbox"] {
   display: grid;
   place-items: center;
   border: 1px solid rgb(var(--border) / 0.5);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: rgb(var(--bg) / 0.5);
 }
 
@@ -1601,7 +1667,7 @@ input[type="checkbox"] {
   padding: 0.15rem;
   border: 1px solid rgb(var(--border) / 0.5);
   background: rgb(var(--bg) / 0.5);
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .result-spec-settings {
@@ -1646,36 +1712,29 @@ input[type="checkbox"] {
   text-align: center;
 }
 
-@media (max-width: 1400px) {
+/* Size nested layouts by their actual space, not a single page breakpoint. */
+.loadout-card,
+.home-editor-target,
+.result-card {
+  container-type: inline-size;
+}
+
+@container (max-width: 20rem) {
+  .loadout-stats-grid,
+  .loadout-conditions,
+  .target-stats,
+  .result-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 48rem) {
   .metrics-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* Narrow layouts: the app caps width at 380px below the lg breakpoint. */
-@media (max-width: 1023px) {
-  .home-editor {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-  }
-
-  .home-editor-loadout {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .home-editor-target {
-    grid-column: auto;
-    grid-row: auto;
-    order: 3;
-  }
-
-  .home-editor-strategy {
-    grid-column: auto;
-    grid-row: auto;
-    order: 4;
-  }
-
+@container (max-width: 38rem) {
   .loadout-columns {
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
@@ -1688,24 +1747,104 @@ input[type="checkbox"] {
     grid-row: auto;
   }
 
-  .home-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .home-toolbar-name {
-    flex-wrap: wrap;
-  }
-
   .loadout-gear-row {
     flex-wrap: wrap;
+  }
+
+  .loadout-bonuses {
+    min-width: 8rem;
   }
 
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .results-grid {
+.gauntlet-layout {
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--panel-gap);
+}
+
+.gauntlet-sidebar {
+  display: grid;
+  align-items: start;
+  gap: var(--panel-gap);
+}
+
+.gauntlet-workspace {
+  min-width: 0;
+}
+
+.gauntlet-loadouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--panel-gap);
+  align-items: stretch;
+}
+
+.gauntlet-loadout {
+  min-width: 0;
+}
+
+.gauntlet-loadout.is-main-style {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+.gauntlet .plot-container,
+.gauntlet .js-plotly-plot,
+.gauntlet .svg-container,
+.gauntlet .main-svg {
+  max-width: 100%;
+}
+
+@media (max-width: 1199px) {
+  .home-editor {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .home-editor-loadout,
+  .home-editor-target,
+  .home-editor-strategy {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .gauntlet-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gauntlet-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gauntlet-sidebar > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 639px) {
+  .home-toolbar {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .home-toolbar-name {
+    flex-basis: 100%;
+  }
+
+  .home-toolbar-status {
+    white-space: normal;
+  }
+
+  .home-panel {
+    padding: 0.75rem;
+  }
+
+  .gauntlet-sidebar {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1713,7 +1852,8 @@ input[type="checkbox"] {
     flex-basis: calc(100% - 4rem);
   }
 
-  .strategy-line {
+  .strategy-line,
+  .strategy-metrics {
     padding-left: 0;
   }
 
@@ -1724,5 +1864,38 @@ input[type="checkbox"] {
   .home-run-button {
     width: 100%;
     justify-content: center;
+  }
+
+  /* Prevent mobile browsers from zooming the page when editing small fields. */
+  input.input-field,
+  select.input-field,
+  .home-name-input,
+  .result-name-input,
+  .strategy-condition-value {
+    font-size: 1rem;
+  }
+}
+
+@media (pointer: coarse) {
+  .home-button,
+  .home-text-button,
+  .home-icon-button,
+  .home-check,
+  .home-add-select,
+  :is(input, select, button).input-field.input-field,
+  .home-segmented button,
+  .picker-option,
+  .btn-accent,
+  .app-nav a {
+    min-height: 2.75rem;
+  }
+
+  .home-icon-button {
+    min-width: 2.75rem;
+  }
+
+  .prayer-icon-button {
+    width: 2.75rem;
+    height: 2.75rem;
   }
 }

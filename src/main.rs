@@ -10,7 +10,10 @@ mod pages;
 mod routes;
 mod worker;
 
-const _: Asset = asset!("/assets/tailwind.css", AssetOptions::css().with_static_head(true));
+const _: Asset = asset!(
+    "/assets/tailwind.css",
+    AssetOptions::css().with_static_head(true)
+);
 
 // Asset folders - these must be declared with asset!() to be included in the build
 pub const EQUIPMENT_ASSETS: Asset = asset!("/assets/equipment");

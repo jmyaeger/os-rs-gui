@@ -51,9 +51,9 @@ pub fn PrayerSelect(style: LoadoutStyle) -> Element {
     let is_prayer_active = |p: Prayer| active_prayers.contains_prayer(p);
 
     rsx! {
-        div { class: "flex flex-col gap-0.5 items-center",
+        div { class: "flex flex-col gap-2 items-center",
             for (row_idx , prayer_row) in PRAYER_ROWS.iter().enumerate() {
-                div { key: "prayer-row-{row_idx}", class: "flex gap-0.5",
+                div { key: "prayer-row-{row_idx}", class: "flex gap-2",
                     for (col_idx , prayer) in prayer_row.iter().enumerate() {
                         if *prayer != Prayer::None {
                             PrayerButton {
@@ -81,14 +81,17 @@ pub fn PrayerSelect(style: LoadoutStyle) -> Element {
 fn PrayerButton(prayer: Prayer, is_active: bool, on_click: EventHandler<Prayer>) -> Element {
     let img_path = get_prayer_img_path(prayer);
     let button_class = if is_active {
-        "relative w-8 h-8 bg-gray-700 rounded-full cursor-pointer transition-all duration-150 hover:scale-105 flex items-center justify-center"
+        "relative w-8 h-8 bg-line rounded-full cursor-pointer transition-colors duration-150 flex items-center justify-center"
     } else {
-        "relative w-8 h-8 bg-gray-800 rounded-full cursor-pointer transition-all duration-150 hover:bg-gray-700 hover:scale-105 flex items-center justify-center"
+        "relative w-8 h-8 bg-surface2 rounded-full cursor-pointer transition-colors duration-150 hover:bg-line flex items-center justify-center"
     };
 
     rsx! {
-        div {
-            class: "{button_class}",
+        button {
+            r#type: "button",
+            class: "prayer-icon-button {button_class}",
+            aria_label: "{prayer}",
+            aria_pressed: is_active,
             title: "{prayer}",
             onclick: move |_| on_click.call(prayer),
             img {

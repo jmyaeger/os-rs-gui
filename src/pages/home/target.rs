@@ -950,7 +950,7 @@ pub fn TargetPanel(
                         label: "ToA invocation",
                         value: current.toa_level as i64,
                         minimum: 0,
-                        maximum: 600,
+                        maximum: 750,
                         on_change: move |value: i64| {
                             let mut config = target.write();
                             let path = config.toa_path_level;

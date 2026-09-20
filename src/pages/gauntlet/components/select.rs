@@ -25,10 +25,10 @@ pub fn Select(
 
             // Wrapper prevents blur from firing before click toggle
             div { onmousedown: |e: MouseEvent| e.prevent_default(),
-                SelectTrigger { class: "w-full input-field text-gray-200 py-1.5 px-2 text-sm rounded cursor-pointer flex justify-between items-center transition-all",
+                SelectTrigger { class: "w-full input-field flex justify-between items-center gap-2 text-left",
                     SelectValue { placeholder: "{placeholder}" }
                     svg {
-                        class: "w-3 h-3 ml-1 shrink-0 text-gray-300",
+                        class: "w-3 h-3 ml-1 shrink-0 text-foreground",
                         view_box: "0 0 24 24",
                         fill: "none",
                         stroke: "currentColor",
@@ -38,12 +38,12 @@ pub fn Select(
                 }
             }
 
-            SelectList { class: "absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-auto",
+            SelectList { class: "picker-menu absolute w-full mt-1 max-h-48 overflow-auto",
                 for (idx , option) in options.iter().enumerate() {
                     SelectOption::<String> {
                         index: idx,
                         value: option.clone(),
-                        class: "w-full text-left py-1.5 px-2 text-sm text-gray-300 hover:bg-slate-800 hover:text-white focus:bg-slate-800 focus:text-white focus:outline-none cursor-pointer transition-colors",
+                        class: "picker-option py-1.5 px-2 text-sm",
                         "{option}"
                     }
                 }

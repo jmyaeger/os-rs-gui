@@ -6,9 +6,9 @@ pub fn ModeToggle() -> Element {
     let mut mode = use_context::<GauntletState>().simulation_mode;
     let current_mode = mode.cloned();
 
-    let button_base = "px-5 py-2 text-sm font-medium transition-all duration-150";
-    let active = "btn-accent";
-    let inactive = "bg-slate-900 text-gray-200 hover:bg-slate-600/40";
+    let button_base = "px-5 py-2 text-sm font-medium";
+    let active = "is-active";
+    let inactive = "";
 
     let two_t3_class = if current_mode == SimulationMode::TwoT3 {
         format!("{button_base} {active}")
@@ -24,9 +24,10 @@ pub fn ModeToggle() -> Element {
 
     rsx! {
         div { class: "flex justify-center",
-            div { class: "inline-flex rounded-xl overflow-hidden border border-slate-700",
+            div { class: "home-segmented", role: "group", aria_label: "Simulation mode",
                 button {
                     class: "{two_t3_class}",
+                    aria_pressed: current_mode == SimulationMode::TwoT3,
                     onclick: move |_| {
                         mode.set(SimulationMode::TwoT3);
                     },
@@ -34,6 +35,7 @@ pub fn ModeToggle() -> Element {
                 }
                 button {
                     class: "{five_one_class}",
+                    aria_pressed: current_mode == SimulationMode::FiveOne,
                     onclick: move |_| {
                         mode.set(SimulationMode::FiveOne);
                     },

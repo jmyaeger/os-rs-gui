@@ -61,7 +61,7 @@ fn SimulateButton() -> Element {
     rsx! {
         div { class: "flex justify-center",
             button {
-                class: "inline-flex items-center gap-2 px-5 py-2.5 rounded-lg btn-accent disabled:bg-gray-600 disabled:cursor-not-allowed",
+                class: "inline-flex items-center gap-2 px-5 py-2.5 btn-accent",
                 disabled: is_pending || !options_valid,
                 title: if !options_valid { "Fix the highlighted options before simulating" },
                 onclick: move |_| {
@@ -70,7 +70,7 @@ fn SimulateButton() -> Element {
                 },
 
                 if is_pending {
-                    span { class: "inline-block w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" }
+                    span { class: "inline-block w-4 h-4 rounded-full border-2 border-canvas/30 border-t-canvas animate-spin" }
                     "Simulating..."
                 } else {
                     "Simulate"
@@ -99,8 +99,8 @@ fn quantile_from_pmf(pmf: &[f64], q: f64) -> usize {
 fn StatChip(label: String, value: String) -> Element {
     rsx! {
         div { class: "px-3 py-2 rounded-lg",
-            div { class: "text-[11px] text-gray-500 text-left", "{label}" }
-            div { class: "text-sm font-medium text-gray-200 num text-left", "{value}" }
+            div { class: "text-[11px] text-muted text-left", "{label}" }
+            div { class: "text-sm font-medium text-foreground num text-left", "{value}" }
         }
     }
 }
@@ -124,7 +124,7 @@ pub fn SimulationResults() -> Element {
             SimulateButton {}
 
             if let Some(err) = error_msg {
-                div { class: "px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm",
+                div { class: "px-4 py-3 rounded bg-error/10 border border-error/30 text-error text-sm",
                     "{err}"
                 }
             }
@@ -184,14 +184,16 @@ pub fn SimulationResults() -> Element {
                             SectionTitle { text: "Time to Kill".to_string() }
 
                             // time unit toggle
-                            div { class: "flex items-center gap-0 rounded-lg overflow-hidden border border-slate-700",
+                            div { class: "home-segmented", role: "group", aria_label: "Time unit",
                                 button {
-                                    class: if time_unit() == TimeUnit::Seconds { "px-2 py-1 text-xs btn-accent" } else { "px-2 py-1 text-xs bg-slate-800 text-gray-400 hover:bg-slate-700/40" },
+                                    class: if time_unit() == TimeUnit::Seconds { "is-active" } else { "" },
+                                    aria_pressed: time_unit() == TimeUnit::Seconds,
                                     onclick: move |_| time_unit.set(TimeUnit::Seconds),
                                     "Seconds"
                                 }
                                 button {
-                                    class: if time_unit() == TimeUnit::Ticks { "px-2 py-1 text-xs btn-accent" } else { "px-2 py-1 text-xs bg-slate-800 text-gray-400 hover:bg-slate-700/40" },
+                                    class: if time_unit() == TimeUnit::Ticks { "is-active" } else { "" },
+                                    aria_pressed: time_unit() == TimeUnit::Ticks,
                                     onclick: move |_| time_unit.set(TimeUnit::Ticks),
                                     "Ticks"
                                 }

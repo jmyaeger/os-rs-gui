@@ -25,10 +25,10 @@ pub fn Gauntlet() -> Element {
     };
 
     rsx! {
-        div { class: "w-full max-w-[380px] lg:max-w-7xl mx-auto",
-            div { class: "flex flex-col lg:flex-row gap-4",
+        div { class: "gauntlet",
+            div { class: "gauntlet-layout",
                 // Left column: Stats, Armour, Options
-                div { class: "lg:w-72 shrink-0 space-y-4",
+                div { class: "gauntlet-sidebar",
                     div { class: "card p-4",
                         div { class: "card-title mb-2", "Stats" }
                         SkillSelect {}
@@ -46,7 +46,7 @@ pub fn Gauntlet() -> Element {
                 }
 
                 // Right column: Mode toggle, Loadouts, Results
-                div { class: "flex-1 space-y-3",
+                div { class: "gauntlet-workspace space-y-3",
                     // Mode toggle
                     div { class: "mb-4", ModeToggle {} }
 
@@ -54,7 +54,7 @@ pub fn Gauntlet() -> Element {
                     div { class: "space-y-3",
                         div {
                             key: "{loadout_group_key}",
-                            class: "flex flex-col lg:flex-row gap-4 justify-center items-center min-h-100",
+                            class: "gauntlet-loadouts",
                             match simulation_mode {
                                 SimulationMode::TwoT3 => rsx! {
                                     LoadoutCard { loadout_number: 1 }
@@ -74,10 +74,16 @@ pub fn Gauntlet() -> Element {
                         div { class: "section-title flex items-center gap-1.5",
                             "Results"
                             div { class: "relative group",
-                                span { class: "text-xs text-gray-400 cursor-help w-4 h-4 rounded-full border border-gray-500 inline-flex items-center justify-center",
+                                button {
+                                    class: "home-icon-button",
+                                    aria_label: "About result averages",
+                                    aria_describedby: "gauntlet-results-help",
                                     "?"
                                 }
-                                div { class: "absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-gray-200 bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 normal-case font-normal",
+                                div {
+                                    id: "gauntlet-results-help",
+                                    role: "tooltip",
+                                    class: "absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-foreground bg-surface2 rounded w-48 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none transition-opacity z-10 normal-case font-normal",
                                     "Average stats are from successful kills only."
                                 }
                             }

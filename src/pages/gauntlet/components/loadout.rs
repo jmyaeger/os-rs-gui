@@ -239,16 +239,12 @@ pub fn LoadoutCard(
             LoadoutStyle::Ranged => "text-ranged",
             LoadoutStyle::Magic => "text-magic",
         })
-        .unwrap_or("text-gray-200");
+        .unwrap_or("text-foreground");
 
     let base_class = format!(
-        "card rounded-lg p-3 flex flex-col gap-1 w-68 min-h-72 {}{}",
+        "card gauntlet-loadout p-3 flex flex-col gap-2 {}{}",
         style_class,
-        if is_main_style {
-            " border-2 border-white"
-        } else {
-            ""
-        }
+        if is_main_style { " is-main-style" } else { "" }
     );
 
     rsx! {
@@ -261,11 +257,12 @@ pub fn LoadoutCard(
                 if fixed_style.is_some() {
                     div { class: "flex justify-center",
                         button {
-                            class: "flex items-center gap-1.5 text-xs px-2 py-0.5 rounded hover:bg-slate-700/40 transition-colors",
+                            class: "flex items-center gap-1.5 text-xs px-2 py-0.5 rounded hover:bg-surface2 transition-colors",
+                            aria_pressed: is_main_style,
                             onclick: on_main_style_click,
                             title: "Set as main style for 5:1",
-                            span { class: if is_main_style { "w-3 h-3 rounded-full border-2 border-white bg-white" } else { "w-3 h-3 rounded-full border-2 border-slate-700" } }
-                            span { class: if is_main_style { "text-slate-100" } else { "text-gray-400" },
+                            span { class: if is_main_style { "w-3 h-3 rounded-full border-2 border-white bg-white" } else { "w-3 h-3 rounded-full border-2 border-line" } }
+                            span { class: if is_main_style { "text-foreground" } else { "text-muted" },
                                 "Main style"
                             }
                         }
@@ -285,7 +282,7 @@ pub fn LoadoutCard(
             // Weapon selector
             if current_style.is_some() {
                 div {
-                    label { class: "text-xs text-gray-400", "Weapon" }
+                    label { class: "text-xs text-muted", "Weapon" }
                     Select {
                         options: weapons,
                         value: selected_weapon,
@@ -297,7 +294,7 @@ pub fn LoadoutCard(
                 // Attack style
                 if selected_weapon().is_some() {
                     div {
-                        label { class: "text-xs text-gray-400", "Attack Style" }
+                        label { class: "text-xs text-muted", "Attack Style" }
                         AttackStyleSelect {
                             style: current_style.unwrap(),
                             weapon: selected_weapon,
@@ -307,11 +304,11 @@ pub fn LoadoutCard(
 
                 // Prayer selector
                 div {
-                    label { class: "text-xs text-gray-400", "Prayers" }
+                    label { class: "text-xs text-muted", "Prayers" }
                     PrayerSelect { style: current_style.unwrap() }
                 }
             }
-        
+
         }
     }
 }

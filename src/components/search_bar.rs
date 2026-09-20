@@ -166,7 +166,8 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
         div { class: "relative w-full",
             input {
                 "type": "text",
-                class: "input-field w-full h-8 px-3 rounded-lg text-sm focus:outline-none",
+                class: "input-field w-full",
+                aria_label: "{props.placeholder}",
                 placeholder: "{props.placeholder}",
                 value: "{search_term}",
                 autocomplete: "off",
@@ -202,24 +203,24 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
                 if should_show {
                     rsx! {
 
-                        div { class: "absolute z-10 w-full mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto",
-                            ul { class: "py-2",
+                        div { class: "picker-menu absolute w-full mt-1 max-h-60 overflow-y-auto",
+                            ul {
                                 for (idx , item) in items_list.iter().enumerate() {
                                     {
                                         let item_clone = item.clone();
                                         let is_highlighted = current_highlight == Some(idx);
                                         let item_id = format!("search-{}-item-{idx}", instance_id());
                                         let highlight_class = if is_highlighted {
-                                            "bg-slate-800"
+                                            "is-highlighted"
                                         } else {
-                                            "hover:bg-slate-800 transition-colors duration-100"
+                                            ""
                                         };
 
                                         rsx! {
                                             li {
                                                 id: "{item_id}",
                                                 key: "{(props.get_key)(item)}",
-                                                class: "cursor-pointer mx-2 mb-1 rounded-md {highlight_class}",
+                                                class: "picker-option {highlight_class}",
                                                 tabindex: "-1",
                                                 onmousedown: move |_| handle_select(item_clone.clone()),
                                                 onmouseenter: move |_| highlighted_index.set(Some(idx)),

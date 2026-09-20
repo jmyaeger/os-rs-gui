@@ -116,32 +116,32 @@ pub fn ArmorSelect() -> Element {
 
     let tier_btn = |tier: usize| {
         let is_active = selected_tier() == Some(tier);
-        if is_active {
-            "px-3 py-1 text-sm font-medium transition-all duration-150 rounded btn-accent"
-        } else {
-            "px-3 py-1 text-sm font-medium transition-all duration-150 rounded bg-slate-900 text-gray-200 hover:bg-slate-600/40 input-field"
-        }
+        if is_active { "is-active" } else { "" }
     };
 
     rsx! {
-        div { class: "flex items-center justify-center gap-1 px-1 py-1 mb-1",
+        div { class: "home-segmented mb-2", role: "group", aria_label: "Armour tier",
             button {
                 class: "{tier_btn(0)}",
+                aria_pressed: selected_tier() == Some(0),
                 onclick: move |_| selected_tier.set(Some(0)),
                 "None"
             }
             button {
                 class: "{tier_btn(1)}",
+                aria_pressed: selected_tier() == Some(1),
                 onclick: move |_| selected_tier.set(Some(1)),
                 "T1"
             }
             button {
                 class: "{tier_btn(2)}",
+                aria_pressed: selected_tier() == Some(2),
                 onclick: move |_| selected_tier.set(Some(2)),
                 "T2"
             }
             button {
                 class: "{tier_btn(3)}",
+                aria_pressed: selected_tier() == Some(3),
                 onclick: move |_| selected_tier.set(Some(3)),
                 "T3"
             }

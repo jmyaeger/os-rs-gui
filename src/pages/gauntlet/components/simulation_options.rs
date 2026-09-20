@@ -4,7 +4,7 @@ use osrs::sims::hunleff::{HunllefEatStrategy, HunllefRedemptionStrat};
 use crate::pages::gauntlet::components::select::Select;
 use crate::pages::gauntlet::state::GauntletState;
 
-const INPUT_CLASS: &str = "w-16 h-7 text-sm px-1 input-field rounded text-center text-white num focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+const INPUT_CLASS: &str = "w-16 h-7 text-sm px-1 input-field rounded text-center text-white num [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 const VALID_BORDER: &str = "";
 
 #[component]
@@ -161,7 +161,7 @@ pub fn SimulationOptions() -> Element {
         div { class: "space-y-0.5",
             // Number of Trials
             div { class: "flex items-center justify-between py-1 px-1 rounded",
-                span { class: "text-sm text-gray-400", "Number of trials" }
+                span { class: "text-sm text-muted", "Number of trials" }
                 input {
                     "type": "number",
                     class: "{num_trials_class}",
@@ -180,7 +180,7 @@ pub fn SimulationOptions() -> Element {
 
             // Lost Ticks
             div { class: "flex items-center justify-between py-1 px-1 rounded",
-                span { class: "text-sm text-gray-400", "Lost ticks" }
+                span { class: "text-sm text-muted", "Lost ticks" }
                 input {
                     "type": "number",
                     class: "{lost_ticks_class}",
@@ -199,7 +199,7 @@ pub fn SimulationOptions() -> Element {
 
             // Paddlefish
             div { class: "flex items-center justify-between py-1 px-1 rounded",
-                span { class: "text-sm text-gray-400", "Paddlefish" }
+                span { class: "text-sm text-muted", "Paddlefish" }
                 input {
                     "type": "number",
                     class: "{food_count_class}",
@@ -218,7 +218,7 @@ pub fn SimulationOptions() -> Element {
 
             // Eat Strategy
             div { class: "flex items-center justify-between py-1 px-1 rounded",
-                span { class: "text-sm text-gray-400 shrink-0", "Eat strategy" }
+                span { class: "text-sm text-muted shrink-0", "Eat strategy" }
                 div { class: "w-40",
                     Select {
                         options: vec![
@@ -247,7 +247,7 @@ pub fn SimulationOptions() -> Element {
             // Show HP threshold input when "Eat at HP" is selected
             if is_eat_at_hp {
                 div { class: "flex items-center justify-between py-1 px-1 rounded ml-1",
-                    span { class: "text-xs text-gray-500", "HP threshold" }
+                    span { class: "text-xs text-muted", "HP threshold" }
                     input {
                         "type": "number",
                         class: "{hp_threshold_class}",
@@ -270,10 +270,10 @@ pub fn SimulationOptions() -> Element {
 
             // Redemption Strategy
             div { class: "flex items-center justify-between py-1 px-1 rounded",
-                span { class: "text-sm text-gray-400", "Redemption" }
+                span { class: "text-sm text-muted", "Redemption" }
                 input {
                     "type": "checkbox",
-                    class: "w-4 h-4 accent-blue-500 cursor-pointer",
+                    class: "w-4 h-4 cursor-pointer",
                     checked: redemption_enabled(),
                     onchange: move |e| {
                         if e.checked() {
@@ -290,7 +290,7 @@ pub fn SimulationOptions() -> Element {
             }
             if redemption_enabled() {
                 div { class: "flex items-center justify-between py-1 px-1 rounded ml-1",
-                    span { class: "text-xs text-gray-500 shrink-0", "Strategy" }
+                    span { class: "text-xs text-muted shrink-0", "Strategy" }
                     div { class: "w-32",
                         Select {
                             options: vec!["Before eating".to_string(), "No food left".to_string()],
@@ -308,7 +308,7 @@ pub fn SimulationOptions() -> Element {
                     }
                 }
                 div { class: "flex items-center justify-between py-1 px-1 rounded ml-1",
-                    span { class: "text-xs text-gray-500", "Max procs" }
+                    span { class: "text-xs text-muted", "Max procs" }
                     input {
                         "type": "number",
                         class: "{max_procs_class}",
