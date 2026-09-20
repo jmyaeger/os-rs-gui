@@ -71,8 +71,8 @@ pub fn Home() -> Element {
                         div { class: "loadout-columns",
                             EquipmentPanel {}
                             PlayerPanel {}
-                            BoostsPanel {}
                         }
+                        BoostsPanel {}
                         MetricsStrip { monster }
                     }
                 }

@@ -1,4 +1,5 @@
-//! Equipment and player halves of the Loadout card.
+//! The Loadout card: the Equipment and Player columns, and the boosts strip
+//! that runs full width beneath them.
 
 use super::HomeState;
 use super::examples::examples;
@@ -55,7 +56,7 @@ pub fn EquipmentPanel() -> Element {
     let soulreaper = player.read().is_wearing("Soulreaper axe", None);
 
     rsx! {
-        div { class: "loadout-column loadout-equipment",
+        div { class: "loadout-column",
             div { class: "loadout-column-header",
                 h3 { "Equipment" }
                 if empty {
@@ -279,7 +280,7 @@ fn EquipmentBonuses() -> Element {
 #[component]
 pub fn PlayerPanel() -> Element {
     rsx! {
-        div { class: "loadout-column loadout-player",
+        div { class: "loadout-column",
             div { class: "loadout-column-header",
                 h3 { "Player" }
             }
@@ -297,8 +298,7 @@ pub fn PlayerPanel() -> Element {
     }
 }
 
-/// Potions, situational boosts and the thrall choice. Sits under Equipment so
-/// the two halves of the Loadout card stay a similar height.
+/// Potions, situational boosts and the thrall choice
 #[component]
 pub fn BoostsPanel() -> Element {
     let mut player = use_context::<Signal<Player>>();
@@ -311,52 +311,69 @@ pub fn BoostsPanel() -> Element {
     let conditions = Conditions::from_boosts(&player.read().boosts);
 
     rsx! {
-        div { class: "loadout-column loadout-boosts",
-            div { class: "loadout-column-header",
-                h3 { "Potions" }
+        section { class: "loadout-boosts", aria_label: "Boosts and conditions",
+            h3 { "Boosts & conditions" }
+            div { class: "loadout-boosts-row",
+                div { class: "loadout-boosts-field",
+                    span { class: "loadout-boosts-label", "Potions" }
+                    div { class: "loadout-chips",
+                        if potions.is_empty() {
+                            span { class: "home-muted", "None" }
+                        }
+                        for potion in potions {
+                            button {
+                                class: "home-chip is-removable",
+                                aria_label: "Remove {potion}",
+                                onclick: move |_| player.write().remove_potion(potion),
+                                img {
+                                    src: format!(
+                                        "{}/{}.png",
+                                        crate::POTIONS_ASSETS,
+                                        potion.to_string().replace(" (-)", "").replace(" (+)", ""),
+                                    ),
+                                    alt: "",
+                                }
+                                "{potion}"
+                                span { class: "home-chip-remove", "×" }
+                            }
+                        }
+                    }
+                    select {
+                        key: "add-potion-{potions.len()}",
+                        class: "home-add-select",
+                        aria_label: "Add potion or boost",
+                        value: "",
+                        onchange: move |event| {
+                            if let Some(potion) = Potion::iter()
+                                .find(|potion| potion.to_string() == event.value()) && potion != Potion::None
+                                && !active_potions(&player.read()).contains(&potion)
+                            {
+                                player.write().add_potion(potion);
+                            }
+                        },
+                        option { value: "", "+ Add" }
+                        for potion in available_potions {
+                            option { value: "{potion}", "{potion}" }
+                        }
+                    }
+                }
+
+            }
+            label { class: "loadout-boosts-field",
+                span { class: "loadout-boosts-label", "Thrall" }
                 select {
-                    key: "add-potion-{potions.len()}",
-                    class: "home-add-select",
-                    aria_label: "Add potion or boost",
-                    value: "",
-                    onchange: move |event| {
-                        if let Some(potion) = Potion::iter()
-                            .find(|potion| potion.to_string() == event.value()) && potion != Potion::None
-                            && !active_potions(&player.read()).contains(&potion)
-                        {
-                            player.write().add_potion(potion);
+                    class: "input-field",
+                    value: thrall.map(ThrallChoice::key).unwrap_or(""),
+                    onchange: move |event| state.sim.write().thrall = ThrallChoice::from_key(&event.value()),
+                    option { value: "", selected: thrall.is_none(), "None" }
+                    for choice in ThrallChoice::ALL {
+                        option {
+                            value: choice.key(),
+                            selected: thrall == Some(choice),
+                            "{choice.label()}"
                         }
-                    },
-                    option { value: "", "+ Add" }
-                    for potion in available_potions {
-                        option { value: "{potion}", "{potion}" }
                     }
                 }
-            }
-            div { class: "loadout-chips",
-                if potions.is_empty() {
-                    span { class: "home-muted", "None" }
-                }
-                for potion in potions {
-                    button {
-                        class: "home-chip is-removable",
-                        aria_label: "Remove {potion}",
-                        onclick: move |_| player.write().remove_potion(potion),
-                        img {
-                            src: format!(
-                                "{}/{}.png",
-                                crate::POTIONS_ASSETS,
-                                potion.to_string().replace(" (-)", "").replace(" (+)", ""),
-                            ),
-                            alt: "",
-                        }
-                        "{potion}"
-                        span { class: "home-chip-remove", "×" }
-                    }
-                }
-            }
-            div { class: "loadout-section-heading",
-                h3 { "Conditions" }
             }
             div { class: "loadout-conditions",
                 ConditionToggle {
@@ -388,22 +405,6 @@ pub fn BoostsPanel() -> Element {
                     label: "Charge spell",
                     enabled: conditions.charge_active,
                     on_change: move |checked| player.write().boosts.charge_active = checked,
-                }
-            }
-            label { class: "loadout-inline-field",
-                span { "Thrall" }
-                select {
-                    class: "input-field",
-                    value: thrall.map(ThrallChoice::key).unwrap_or(""),
-                    onchange: move |event| state.sim.write().thrall = ThrallChoice::from_key(&event.value()),
-                    option { value: "", selected: thrall.is_none(), "None" }
-                    for choice in ThrallChoice::ALL {
-                        option {
-                            value: choice.key(),
-                            selected: thrall == Some(choice),
-                            "{choice.label()}"
-                        }
-                    }
                 }
             }
         }
