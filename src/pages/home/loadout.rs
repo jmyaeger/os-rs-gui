@@ -11,7 +11,6 @@ use dioxus::prelude::*;
 use osrs::types::equipment::{CombatStance, CombatStyle};
 use osrs::types::player::Player;
 use osrs::types::potions::Potion;
-use osrs::types::spells::Spell;
 use osrs::types::stats::Stat;
 use strum::IntoEnumIterator;
 
@@ -136,18 +135,25 @@ pub fn EquipmentPanel() -> Element {
                     }
                 }
                 // Spell-specific boosts live beside the spell that enables them.
-                if matches!(spell, Some(Spell::Standard(_))) {
+                if let Some(spell) = spell && spell.is_fire_spell() {
                     ConditionToggle {
                         label: "Sunfire runes",
                         enabled: boosts.sunfire,
                         on_change: move |checked| player.write().boosts.sunfire.active = checked,
                     }
                 }
-                if matches!(spell, Some(Spell::Arceuus(_))) {
+                if let Some(spell) = spell && spell.is_arceuus_spell() {
                     ConditionToggle {
                         label: "Mark of Darkness",
                         enabled: boosts.mark_of_darkness,
                         on_change: move |checked| player.write().boosts.mark_of_darkness = checked,
+                    }
+                }
+                if let Some(spell) = spell && spell.is_god_spell() {
+                    ConditionToggle {
+                        label: "Charge",
+                        enabled: boosts.charge_active,
+                        on_change: move |checked| player.write().boosts.charge_active = checked,
                     }
                 }
             }
@@ -304,7 +310,17 @@ pub fn BoostsPanel() -> Element {
     let mut player = use_context::<Signal<Player>>();
     let mut state = use_context::<HomeState>();
     let thrall = state.sim.read().thrall;
-    let potions = active_potions(&player.read());
+    // The player groups boosts by stat; keep chips in the order they were added.
+    let mut potion_order = use_signal(Vec::<Potion>::new);
+    let mut potions = active_potions(&player.read());
+    potions.sort_by_key(|potion| {
+        potion_order
+            .read()
+            .iter()
+            .position(|p| p == potion)
+            .unwrap_or(usize::MAX)
+    });
+    let potions_for_add = potions.clone();
     let available_potions: Vec<_> = Potion::iter()
         .filter(|potion| *potion != Potion::None && !potions.contains(potion))
         .collect();
@@ -312,42 +328,21 @@ pub fn BoostsPanel() -> Element {
 
     rsx! {
         section { class: "loadout-boosts", aria_label: "Boosts and conditions",
-            h3 { "Boosts & conditions" }
-            div { class: "loadout-boosts-row",
-                div { class: "loadout-boosts-field",
-                    span { class: "loadout-boosts-label", "Potions" }
-                    div { class: "loadout-chips",
-                        if potions.is_empty() {
-                            span { class: "home-muted", "None" }
-                        }
-                        for potion in potions {
-                            button {
-                                class: "home-chip is-removable",
-                                aria_label: "Remove {potion}",
-                                onclick: move |_| player.write().remove_potion(potion),
-                                img {
-                                    src: format!(
-                                        "{}/{}.png",
-                                        crate::POTIONS_ASSETS,
-                                        potion.to_string().replace(" (-)", "").replace(" (+)", ""),
-                                    ),
-                                    alt: "",
-                                }
-                                "{potion}"
-                                span { class: "home-chip-remove", "×" }
-                            }
-                        }
-                    }
+            div { class: "loadout-boosts-field",
+                span { class: "loadout-boosts-label", "Potions" }
+                div { class: "loadout-chips",
                     select {
-                        key: "add-potion-{potions.len()}",
                         class: "home-add-select",
                         aria_label: "Add potion or boost",
-                        value: "",
+                        value: String::new(),
                         onchange: move |event| {
                             if let Some(potion) = Potion::iter()
                                 .find(|potion| potion.to_string() == event.value()) && potion != Potion::None
                                 && !active_potions(&player.read()).contains(&potion)
                             {
+                                let mut order = potions_for_add.clone();
+                                order.push(potion);
+                                potion_order.set(order);
                                 player.write().add_potion(potion);
                             }
                         },
@@ -356,8 +351,28 @@ pub fn BoostsPanel() -> Element {
                             option { value: "{potion}", "{potion}" }
                         }
                     }
+                    if potions.is_empty() {
+                        span { class: "home-muted", "None" }
+                    }
+                    for potion in potions {
+                        button {
+                            key: "{potion}",
+                            class: "home-chip is-removable",
+                            aria_label: "Remove {potion}",
+                            onclick: move |_| player.write().remove_potion(potion),
+                            img {
+                                src: format!(
+                                    "{}/{}.png",
+                                    crate::POTIONS_ASSETS,
+                                    potion.to_string().replace(" (-)", "").replace(" (+)", ""),
+                                ),
+                                alt: "",
+                            }
+                            span { class: "home-chip-label", "{potion}" }
+                            span { class: "home-chip-remove", "×" }
+                        }
+                    }
                 }
-
             }
             label { class: "loadout-boosts-field",
                 span { class: "loadout-boosts-label", "Thrall" }
@@ -377,14 +392,9 @@ pub fn BoostsPanel() -> Element {
             }
             div { class: "loadout-conditions",
                 ConditionToggle {
-                    label: "Slayer task",
+                    label: "On slayer task",
                     enabled: conditions.on_task,
                     on_change: move |checked| player.write().boosts.on_task = checked,
-                }
-                ConditionToggle {
-                    label: "Wilderness",
-                    enabled: conditions.in_wilderness,
-                    on_change: move |checked| player.write().boosts.in_wilderness = checked,
                 }
                 ConditionToggle {
                     label: "Kandarin hard diary",
@@ -392,19 +402,14 @@ pub fn BoostsPanel() -> Element {
                     on_change: move |checked| player.write().boosts.kandarin_diary = checked,
                 }
                 ConditionToggle {
-                    label: "Multicombat",
-                    enabled: conditions.in_multi,
-                    on_change: move |checked| player.write().boosts.in_multi = checked,
+                    label: "In wilderness",
+                    enabled: conditions.in_wilderness,
+                    on_change: move |checked| player.write().boosts.in_wilderness = checked,
                 }
                 ConditionToggle {
                     label: "Forinthry surge",
                     enabled: conditions.forinthry_surge,
                     on_change: move |checked| player.write().boosts.forinthry_surge = checked,
-                }
-                ConditionToggle {
-                    label: "Charge spell",
-                    enabled: conditions.charge_active,
-                    on_change: move |checked| player.write().boosts.charge_active = checked,
                 }
             }
         }
