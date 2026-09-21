@@ -205,17 +205,12 @@ pub fn SearchBar<T: Clone + PartialEq + 'static>(props: SearchBarProps<T>) -> El
 
                         div { class: "picker-menu absolute w-full mt-1 max-h-60 overflow-y-auto",
                             ul {
-                                for (idx , item) in items_list.iter().enumerate() {
+                                for (idx, item) in items_list.iter().enumerate() {
                                     {
                                         let item_clone = item.clone();
                                         let is_highlighted = current_highlight == Some(idx);
                                         let item_id = format!("search-{}-item-{idx}", instance_id());
-                                        let highlight_class = if is_highlighted {
-                                            "is-highlighted"
-                                        } else {
-                                            ""
-                                        };
-
+                                        let highlight_class = if is_highlighted { "is-highlighted" } else { "" };
                                         rsx! {
                                             li {
                                                 id: "{item_id}",

@@ -184,7 +184,10 @@ pub fn SimulationResults() -> Element {
                             SectionTitle { text: "Time to Kill".to_string() }
 
                             // time unit toggle
-                            div { class: "home-segmented", role: "group", aria_label: "Time unit",
+                            div {
+                                class: "home-segmented",
+                                role: "group",
+                                aria_label: "Time unit",
                                 button {
                                     class: if time_unit() == TimeUnit::Seconds { "is-active" } else { "" },
                                     aria_pressed: time_unit() == TimeUnit::Seconds,

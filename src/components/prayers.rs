@@ -53,55 +53,55 @@ pub fn PrayerSelect(#[props(default = true)] show_header: bool) -> Element {
     rsx! {
         div {
             if show_header {
-            // Toggle header
-            button {
-                r#type: "button",
-                aria_expanded: "{!is_collapsed()}",
-                class: "flex items-center justify-between cursor-pointer p-2 hover:bg-surface2 rounded transition-colors",
-                onclick: move |_| is_collapsed.set(!is_collapsed()),
-                div { class: "flex items-center gap-4",
-                    h3 { class: "text-sm font-semibold card-title w-12", "Prayers" }
-                    if is_collapsed() {
-                        {
-                            let active_prayers: Vec<Prayer> = PRAYER_ROWS
-                                .iter()
-                                .flatten()
-                                .filter(|&prayer| *prayer != Prayer::None && is_prayer_active(*prayer))
-                                .copied()
-                                .collect();
-                            if !active_prayers.is_empty() {
-                                rsx! {
-                                    div { class: "flex gap-2",
-                                        for prayer in active_prayers.iter() {
-                                            img {
-                                                class: "w-5 h-5 object-contain",
-                                                src: "{get_prayer_img_path(*prayer)}",
-                                                alt: "{prayer}",
-                                                title: "{prayer}",
+                // Toggle header
+                button {
+                    r#type: "button",
+                    aria_expanded: "{!is_collapsed()}",
+                    class: "flex items-center justify-between cursor-pointer p-2 hover:bg-surface2 rounded transition-colors",
+                    onclick: move |_| is_collapsed.set(!is_collapsed()),
+                    div { class: "flex items-center gap-4",
+                        h3 { class: "text-sm font-semibold card-title w-12", "Prayers" }
+                        if is_collapsed() {
+                            {
+                                let active_prayers: Vec<Prayer> = PRAYER_ROWS
+                                    .iter()
+                                    .flatten()
+                                    .filter(|&prayer| *prayer != Prayer::None && is_prayer_active(*prayer))
+                                    .copied()
+                                    .collect();
+                                if !active_prayers.is_empty() {
+                                    rsx! {
+                                        div { class: "flex gap-2",
+                                            for prayer in active_prayers.iter() {
+                                                img {
+                                                    class: "w-5 h-5 object-contain",
+                                                    src: "{get_prayer_img_path(*prayer)}",
+                                                    alt: "{prayer}",
+                                                    title: "{prayer}",
+                                                }
                                             }
                                         }
                                     }
+                                } else {
+                                    rsx! {}
                                 }
-                            } else {
-                                rsx! {}
                             }
                         }
                     }
+                    div {
+                        class: "text-xs text-muted transform transition-transform",
+                        class: if is_collapsed() { "" } else { "rotate-180" },
+                        "▼"
+                    }
                 }
-                div {
-                    class: "text-xs text-muted transform transition-transform",
-                    class: if is_collapsed() { "" } else { "rotate-180" },
-                    "▼"
-                }
-            }
             }
 
             // Expanded prayer grid
             if !show_header || !is_collapsed() {
                 div { class: "loadout-prayer-grid flex flex-col gap-2 items-center mt-2",
-                    for (row_idx , prayer_row) in PRAYER_ROWS.iter().enumerate() {
+                    for (row_idx, prayer_row) in PRAYER_ROWS.iter().enumerate() {
                         div { key: "prayer-row-{row_idx}", class: "flex gap-2",
-                            for (col_idx , prayer) in prayer_row.iter().enumerate() {
+                            for (col_idx, prayer) in prayer_row.iter().enumerate() {
                                 if *prayer != Prayer::None {
                                     PrayerButton {
                                         key: "prayer-{row_idx}-{col_idx}",

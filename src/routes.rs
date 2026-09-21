@@ -56,9 +56,7 @@ fn Layout() -> Element {
                 }
             }
 
-            main { id: "main-content", tabindex: "-1", class: "app-width",
-                Outlet::<Route> {}
-            }
+            main { id: "main-content", tabindex: "-1", class: "app-width", Outlet::<Route> {} }
         }
     }
 }

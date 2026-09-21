@@ -250,7 +250,7 @@ fn EquipmentBonuses() -> Element {
                     }
                 }
                 tbody {
-                    for (label , icon , attack , defence) in styles {
+                    for (label, icon, attack, defence) in styles {
                         tr { key: "{label}",
                             th { scope: "row",
                                 img {
@@ -266,7 +266,7 @@ fn EquipmentBonuses() -> Element {
                 }
             }
             dl { class: "loadout-other-bonuses",
-                for (label , icon , value) in other {
+                for (label, icon, value) in other {
                     div { key: "{label}",
                         dt {
                             img {

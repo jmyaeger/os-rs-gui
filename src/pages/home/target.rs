@@ -868,7 +868,7 @@ pub fn TargetPanel(
 
             div { class: "target-section-label", "Base stats" }
             div { class: "target-stats",
-                for (index , (label , icon)) in STAT_ICONS.into_iter().enumerate() {
+                for (index, (label, icon)) in STAT_ICONS.into_iter().enumerate() {
                     StatRow {
                         key: "stat-{label}",
                         icon: format!("{}/{icon}.png", crate::BONUSES_ASSETS),
@@ -882,7 +882,7 @@ pub fn TargetPanel(
             }
             div { class: "target-section-label", "Defensive bonuses" }
             div { class: "target-stats",
-                for (index , (label , icon)) in DEFENCE_ICONS.into_iter().enumerate() {
+                for (index, (label, icon)) in DEFENCE_ICONS.into_iter().enumerate() {
                     StatRow {
                         key: "defence-{label}",
                         icon: format!("{}/{icon}", crate::BONUSES_ASSETS),

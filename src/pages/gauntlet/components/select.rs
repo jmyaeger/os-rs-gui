@@ -39,7 +39,7 @@ pub fn Select(
             }
 
             SelectList { class: "picker-menu absolute w-full mt-1 max-h-48 overflow-auto",
-                for (idx , option) in options.iter().enumerate() {
+                for (idx, option) in options.iter().enumerate() {
                     SelectOption::<String> {
                         index: idx,
                         value: option.clone(),

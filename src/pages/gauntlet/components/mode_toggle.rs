@@ -24,7 +24,10 @@ pub fn ModeToggle() -> Element {
 
     rsx! {
         div { class: "flex justify-center",
-            div { class: "home-segmented", role: "group", aria_label: "Simulation mode",
+            div {
+                class: "home-segmented",
+                role: "group",
+                aria_label: "Simulation mode",
                 button {
                     class: "{two_t3_class}",
                     aria_pressed: current_mode == SimulationMode::TwoT3,

@@ -180,7 +180,7 @@ pub fn ResultsPanel() -> Element {
                 }
             } else {
                 div { class: "results-grid",
-                    for (index , entry) in entries.iter().enumerate() {
+                    for (index, entry) in entries.iter().enumerate() {
                         ResultCard {
                             key: "{entry.id}",
                             entry: entry.clone(),
@@ -491,7 +491,7 @@ fn ResultCard(
                         div {
                             class: "result-paperdoll",
                             aria_label: "Equipment",
-                            for (slot , row , column) in GEAR_GRID {
+                            for (slot, row, column) in GEAR_GRID {
                                 {
                                     let item = entry.loadout.item(slot);
                                     let label = item
@@ -545,7 +545,7 @@ fn ResultCard(
                         }
                     }
                     div { class: "result-stats",
-                        for (name , base , current) in stats {
+                        for (name, base, current) in stats {
                             div { key: "{name}",
                                 img {
                                     src: "{BONUSES_ASSETS}/{name.to_lowercase()}.png",
@@ -571,7 +571,7 @@ fn ResultCard(
                             div { class: "result-specs-heading",
                                 h4 { "Special attacks" }
                             }
-                            for (step_index , step) in entry.plan.steps.iter().enumerate() {
+                            for (step_index, step) in entry.plan.steps.iter().enumerate() {
                                 div { class: "result-spec",
                                     div { class: "result-spec-name",
                                         span { class: "home-muted num", "{step_index + 1}" }

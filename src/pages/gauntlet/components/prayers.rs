@@ -52,9 +52,9 @@ pub fn PrayerSelect(style: LoadoutStyle) -> Element {
 
     rsx! {
         div { class: "flex flex-col gap-2 items-center",
-            for (row_idx , prayer_row) in PRAYER_ROWS.iter().enumerate() {
+            for (row_idx, prayer_row) in PRAYER_ROWS.iter().enumerate() {
                 div { key: "prayer-row-{row_idx}", class: "flex gap-2",
-                    for (col_idx , prayer) in prayer_row.iter().enumerate() {
+                    for (col_idx, prayer) in prayer_row.iter().enumerate() {
                         if *prayer != Prayer::None {
                             PrayerButton {
                                 key: "prayer-{row_idx}-{col_idx}",

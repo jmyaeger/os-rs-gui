@@ -52,20 +52,49 @@ pub fn EquipmentGridSlot(slot_type: GearSlot) -> Element {
                 match current_item {
                     Some(ref item) => {
                         if item_name == "Unarmed" {
-                            rsx! { img { class: "opacity-30 filter grayscale invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
+                            rsx! {
+                                img {
+                                    class: "opacity-30 filter grayscale invert",
+                                    src: "{placeholder_image}",
+                                    alt: "{slot_type}",
+                                    draggable: "false",
+                                }
+                            }
                         } else {
                             let image_path = item.as_ref().get_image_path();
                             if image_path.is_empty() {
-                                log::warn!("[GridSlot {slot_type:?}] Item '{item_name}' has empty image path. Showing placeholder.");
-                                rsx! { img { class: "opacity-30 filter grayscale invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
+                                log::warn!(
+                                    "[GridSlot {slot_type:?}] Item '{item_name}' has empty image path. Showing placeholder."
+                                );
+                                rsx! {
+                                    img {
+                                        class: "opacity-30 filter grayscale invert",
+                                        src: "{placeholder_image}",
+                                        alt: "{slot_type}",
+                                        draggable: "false",
+                                    }
+                                }
                             } else {
-                                let cdn_image = format!("{}/{}", crate::EQUIPMENT_ASSETS, item.get_image_path());
-                                rsx! { img { src: "{cdn_image}", alt: "{item_name}" } }
+                                let cdn_image = format!(
+                                    "{}/{}",
+                                    crate::EQUIPMENT_ASSETS,
+                                    item.get_image_path(),
+                                );
+                                rsx! {
+                                    img { src: "{cdn_image}", alt: "{item_name}" }
+                                }
                             }
                         }
-                    },
+                    }
                     None => {
-                        rsx! { img { class: "opacity-30 filter grayscale invert", src: "{placeholder_image}", alt: "{slot_type}", draggable: "false" } }
+                        rsx! {
+                            img {
+                                class: "opacity-30 filter grayscale invert",
+                                src: "{placeholder_image}",
+                                alt: "{slot_type}",
+                                draggable: "false",
+                            }
+                        }
                     }
                 }
             }

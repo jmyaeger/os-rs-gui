@@ -120,7 +120,10 @@ pub fn ArmorSelect() -> Element {
     };
 
     rsx! {
-        div { class: "home-segmented mb-2", role: "group", aria_label: "Armour tier",
+        div {
+            class: "home-segmented mb-2",
+            role: "group",
+            aria_label: "Armour tier",
             button {
                 class: "{tier_btn(0)}",
                 aria_pressed: selected_tier() == Some(0),
