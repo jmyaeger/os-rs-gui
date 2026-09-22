@@ -4,7 +4,7 @@
 //! simulation is a translation, not a redesign.
 
 use super::HomeState;
-use super::metrics::spec_metrics;
+use super::metrics::get_spec_metrics;
 use super::simulation::{spec_implemented, spec_player};
 use super::spec::{GearItem, OFFENSIVE_PRAYERS, SLOTS};
 use crate::components::{SearchBar, equipment_catalog};
@@ -605,7 +605,7 @@ pub fn StrategyPanel(monster: ReadSignal<Option<Monster>>) -> Element {
                 p { class: "strategy-empty", "No special attacks." }
             } else {
                 div { class: "strategy-steps",
-                    for (index, step) in plan.steps.iter().enumerate() {
+                    for (index , step) in plan.steps.iter().enumerate() {
                         StrategyRow {
                             key: "{step.id}",
                             index,
@@ -648,7 +648,7 @@ fn StrategyRow(
     let metrics = match &*monster.read() {
         Some(monster) => step.defence_type().map(|(defence, _)| {
             spec_player(&player.read(), &step)
-                .and_then(|player| spec_metrics(&player, monster, defence))
+                .and_then(|player| get_spec_metrics(&player, monster, defence))
         }),
         None => None,
     };
@@ -708,7 +708,7 @@ fn StrategyRow(
                                 .map(|(style, _, _)| style);
                             update(&|step| step.style = chosen);
                         },
-                        for (style, combat_type, stance) in styles.clone() {
+                        for (style , combat_type , stance) in styles.clone() {
                             option {
                                 value: "{style}",
                                 selected: Some(style) == resolved_style,
@@ -830,7 +830,7 @@ fn StrategyRow(
                 if step.conditions.is_empty() {
                     span { class: "home-muted", "Whenever energy allows" }
                 }
-                for (condition_index, condition) in step.conditions.iter().copied().enumerate() {
+                for (condition_index , condition) in step.conditions.iter().copied().enumerate() {
                     span {
                         class: "home-chip strategy-condition",
                         key: "{condition.kind()}-{condition_index}",
@@ -887,7 +887,7 @@ fn StrategyRow(
                         }
                     },
                     option { value: "", "+ Condition" }
-                    for (kind, label) in SpecCondition::KINDS {
+                    for (kind , label) in SpecCondition::KINDS {
                         option { value: kind, "{label}" }
                     }
                 }
@@ -897,7 +897,7 @@ fn StrategyRow(
                 if step.prayers.is_empty() {
                     span { class: "home-muted", "Same as main" }
                 }
-                for (prayer_index, prayer) in step.prayers.iter().copied().enumerate() {
+                for (prayer_index , prayer) in step.prayers.iter().copied().enumerate() {
                     span { class: "home-chip", key: "{prayer}",
                         img {
                             src: "{crate::PRAYERS_ASSETS}/{prayer}.png",
@@ -946,7 +946,7 @@ fn StrategyRow(
                 if two_handed {
                     span { class: "home-chip is-note", "Shield removed" }
                 }
-                for (item_index, item) in step.switches.iter().enumerate() {
+                for (item_index , item) in step.switches.iter().enumerate() {
                     span {
                         class: "home-chip strategy-switch",
                         key: "{item.slot}",

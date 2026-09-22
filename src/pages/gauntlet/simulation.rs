@@ -232,9 +232,9 @@ fn run_simulation_inner(
     let hunllef = Monster::new("Corrupted Hunllef", None)
         .map_err(|e| osrs::error::SimulationError::MonsterCreationError(format!("{e:?}")))?;
 
-    calc_active_player_rolls(&mut melee_switch, &hunllef);
-    calc_active_player_rolls(&mut ranged_switch, &hunllef);
-    calc_active_player_rolls(&mut magic_switch, &hunllef);
+    calc_active_player_rolls(&mut melee_switch, &hunllef)?;
+    calc_active_player_rolls(&mut ranged_switch, &hunllef)?;
+    calc_active_player_rolls(&mut magic_switch, &hunllef)?;
 
     let mut player = Player::builder()
         .player_stats(input.player_stats)
@@ -244,15 +244,15 @@ fn run_simulation_inner(
     player.switches.clear();
     player
         .switches
-        .push(GearSwitch::new(SwitchType::Melee, &melee_switch, &hunllef));
+        .push(GearSwitch::new(SwitchType::Melee, &melee_switch, &hunllef)?);
     player.switches.push(GearSwitch::new(
         SwitchType::Ranged,
         &ranged_switch,
         &hunllef,
-    ));
+    )?);
     player
         .switches
-        .push(GearSwitch::new(SwitchType::Magic, &magic_switch, &hunllef));
+        .push(GearSwitch::new(SwitchType::Magic, &magic_switch, &hunllef)?);
     let _ = player.switch(&SwitchType::Magic);
 
     let fight = osrs::sims::hunleff::HunllefFight::new(player, input.sim_config.clone())?;

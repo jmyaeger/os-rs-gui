@@ -3,7 +3,7 @@
 //! Runs inside the shared worker (see `crate::worker`); off the web target it
 //! runs inline, which is how the tests exercise it.
 
-use super::metrics::{calculate_against, check_magic_is_supported};
+use super::metrics::calculate_against;
 use super::spec::{LoadoutSpec, TRACKED_PRAYERS};
 use super::strategy::{DeathCharge, RestorePolicy, SpecPlan, SpecStep, spec_cost, spec_weapons};
 use super::target::TargetConfig;
@@ -223,7 +223,7 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
     // Reuse the calculator's validation so the simulation fails for the same reasons.
     // Validation only: a thrall never makes a setup invalid, so it is left out.
     calculate_against(&player, &monster, None)?;
-    calc_active_player_rolls(&mut player, &monster);
+    calc_active_player_rolls(&mut player, &monster).map_err(|e| e.to_string())?;
     player.switches.clear();
     player.current_switch = None;
 
@@ -242,11 +242,9 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
             ));
         }
         let switch_player = spec_player(&player, step)?;
-        // GearSwitch::new calculates rolls, which panics for a magic weapon the
-        // engine has no max hit for.
-        check_magic_is_supported(&switch_player)?;
         let label: Rc<str> = Rc::from(format!("{} #{}", step.weapon.name, index + 1));
-        let switch = GearSwitch::new(SwitchType::Spec(label), &switch_player, &monster);
+        let switch = GearSwitch::new(SwitchType::Spec(label), &switch_player, &monster)
+            .map_err(|e| e.to_string())?;
         let conditions: Vec<CoreCondition> = step
             .conditions
             .iter()
@@ -291,7 +289,7 @@ pub fn run_single_way(
         ));
     }
     fight.set_attack_function();
-    calc_active_player_rolls(&mut fight.player, &fight.monster);
+    calc_active_player_rolls(&mut fight.player, &fight.monster).map_err(|e| e.to_string())?;
     let starting_energy = SpecEnergy::new(input.plan.starting_energy);
     fight.player.stats.spec = starting_energy;
     input.target.apply_starting_state(&mut fight.monster);
@@ -310,7 +308,7 @@ pub fn run_single_way(
             Err(SimulationError::PlayerDeathError(_)) => {}
             Err(error) => return Err(error.to_string()),
         }
-        fight.reset();
+        fight.reset().map_err(|e| e.to_string())?;
         if input.plan.restore == RestorePolicy::EveryKill {
             fight.player.stats.spec = starting_energy;
         }
@@ -529,7 +527,7 @@ mod tests {
     /// stops matching the engine's own, and this fails.
     #[test]
     fn spec_attack_roll_matches_engine_accuracy() {
-        use super::super::metrics::spec_metrics;
+        use super::super::metrics::get_spec_metrics;
         use super::super::strategy::spec_defence_type;
 
         let target = TargetConfig::example("General Graardor", 0, 0, 0);
@@ -552,7 +550,7 @@ mod tests {
             let player = spec_player(&main, &step).unwrap();
             let (defence, _) =
                 spec_defence_type(name, step.style_combat_type().expect("a style type"));
-            let metrics = spec_metrics(&player, &monster, defence).unwrap();
+            let metrics = get_spec_metrics(&player, &monster, defence).unwrap();
 
             // The engine's standard accuracy formula, applied to the rolls we show.
             let (attack, defence_roll) = (
@@ -579,7 +577,7 @@ mod tests {
     /// coverage.
     #[test]
     fn every_offered_spec_weapon_reports_metrics_or_a_reason() {
-        use super::super::metrics::spec_metrics;
+        use super::super::metrics::get_spec_metrics;
         use super::super::strategy::{simulated_spec_weapons, spec_defence_type};
 
         let target = TargetConfig::example("General Graardor", 0, 0, 0);
@@ -600,7 +598,7 @@ mod tests {
             let (defence, _) = spec_defence_type(&entry.name, style_type);
             let player =
                 spec_player(&main, &step).unwrap_or_else(|error| panic!("{}: {error}", entry.name));
-            if let Err(reason) = spec_metrics(&player, &monster, defence) {
+            if let Err(reason) = get_spec_metrics(&player, &monster, defence) {
                 // A refusal is fine as long as it explains itself; the catch-all
                 // arm means an engine error kind we do not handle yet.
                 assert!(
@@ -646,7 +644,7 @@ mod tests {
     /// while every other weapon looked fine.
     #[test]
     fn multi_hitsplat_specs_beat_a_normal_attack() {
-        use super::super::metrics::{calculate_against, spec_metrics};
+        use super::super::metrics::{calculate_against, get_spec_metrics};
         use super::super::strategy::{simulated_spec_weapons, spec_defence_type};
 
         let target = TargetConfig::example("General Graardor", 0, 0, 0);
@@ -668,7 +666,7 @@ mod tests {
             let player = spec_player(&main, &step).unwrap();
             let (defence, _) = spec_defence_type(name, step.style_combat_type().unwrap());
 
-            let spec = spec_metrics(&player, &monster, defence).unwrap();
+            let spec = get_spec_metrics(&player, &monster, defence).unwrap();
             let normal = calculate_against(&player, &monster, None).unwrap();
             assert!(
                 spec.expected_hit > normal.expected_hit * 1.5,

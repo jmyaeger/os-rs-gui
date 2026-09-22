@@ -1,8 +1,7 @@
-//! Cheap engine calculations for the main weapon: rolls, DPS, and expected TTK.
-
 use dioxus::prelude::*;
 use osrs::calc::dps_calc::{
     get_distribution, get_dps, get_expected_damage, get_hit_chance, get_ttk, get_ttk_distribution,
+    spec_att_roll_factor,
 };
 use osrs::calc::hit_dist::AttackDistribution;
 use osrs::calc::rolls::calc_active_player_rolls;
@@ -20,24 +19,22 @@ use super::state::HomeState;
 #[cfg(test)]
 use super::target::TargetConfig;
 
+/// Calculated metrics for the main weapon, including thralls and burn but not specs.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CombatMetrics {
     pub dps: f64,
-    /// Probability that the first hitsplat passes its accuracy check, including accurate zeros.
     pub accuracy: f64,
-    /// Maximum combined damage from one attack, including additional hitsplats.
     pub max_hit: u32,
     pub attack_roll: i32,
     pub defence_roll: i32,
-    /// Expected damage from one attack, averaged over hits and misses.
     #[serde(default)]
     pub expected_hit: f64,
-    /// Expected time to kill with the main weapon only, in seconds.
     #[serde(default)]
     pub expected_ttk: Option<f64>,
 }
 
-/// What one use of a special attack does against the target's starting state.
+/// Calculated metrics for a special attack. These act like the special attack is used
+/// repeatedly with no consideration for special attack energy.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SpecMetrics {
     pub dps: f64,
@@ -46,38 +43,13 @@ pub struct SpecMetrics {
     pub expected_hit: f64,
     pub attack_roll: i32,
     pub defence_roll: i32,
-    /// This special attack bypasses the accuracy roll, so the rolls below do not
-    /// decide the outcome and are not worth showing.
     pub always_hits: bool,
 }
 
-/// The engine multiplies the attack roll by a per-weapon factor for special
-/// attacks, inside the private `dps_calc::get_normal_accuracy`. This mirrors that
-/// table so the roll can be displayed; `spec_attack_roll_matches_engine_accuracy`
-/// fails if the two drift apart.
-fn spec_attack_factor(player: &Player) -> (i32, i32) {
-    match player.gear.weapon.name.as_str() {
-        "Saradomin godsword" | "Bandos godsword" | "Zamorak godsword" | "Armadyl godsword"
-        | "Zaryte crossbow" | "Webweaver bow" | "Toxic blowpipe" | "Ancient godsword"
-        | "Brine sabre" | "Barrelchest anchor" | "Eye of ayak" => (2, 1),
-        "Accursed sceptre"
-        | "Accursed sceptre (a)"
-        | "Volatile nightmare staff"
-        | "Arkan blade"
-        | "Granite hammer" => (3, 2),
-        "Dragon dagger" => (115, 100),
-        "Abyssal dagger" | "Abyssal whip" | "Dragon mace" | "Dragon sword" | "Elder maul" => (5, 4),
-        "Soulreaper axe" => (100 + 6 * player.boosts.soulreaper_stacks as i32, 100),
-        "Magic shortbow" | "Magic shortbow (i)" => (10, 7),
-        "Heavy ballista" | "Light ballista" => (5, 4),
-        "Rosewood blowpipe" => (4, 5),
-        _ => (1, 1),
-    }
-}
-
-/// One use of `player`'s special attack against `monster`. `defence_type` is the
-/// combat type the spec rolls against, which most weapons fix regardless of style.
-pub fn spec_metrics(
+/// Get the special attack metrics of `player`'s special attack against `monster`.
+/// `defence_type` is the combat type the spec rolls against, since most specs roll against
+/// a fixed style (exceptions being burning claws and the soulreaper axe).
+pub fn get_spec_metrics(
     player: &Player,
     monster: &Monster,
     defence_type: CombatType,
@@ -85,8 +57,7 @@ pub fn spec_metrics(
     let mut player = player.clone();
     player.update_bonuses();
     player.update_set_effects();
-    check_magic_is_supported(&player)?;
-    calc_active_player_rolls(&mut player, monster);
+    calc_active_player_rolls(&mut player, monster).map_err(|e| e.to_string())?;
     let distribution = get_distribution(&player, monster, true).map_err(|error| match error {
         DpsCalcError::SpecNotImplemented(_) => {
             "No formula for this special attack yet — the simulation still models it.".to_string()
@@ -100,8 +71,8 @@ pub fn spec_metrics(
         .att_rolls
         .get(combat_type)
         .map_err(|error| format!("{error:?}"))?;
-    let (numerator, denominator) = spec_attack_factor(&player);
-    let mut attack_roll = numerator * base_roll / denominator;
+    let factor = spec_att_roll_factor(&player);
+    let mut attack_roll = factor.multiply_to_int(base_roll);
     if player.is_wearing("Keris partisan of the sun", None)
         && monster.is_toa_monster()
         && monster.stats.hitpoints.current < monster.stats.hitpoints.base / 4
@@ -177,9 +148,6 @@ fn prepare(player: &Player, monster: &Monster) -> Result<Prepared, String> {
         if player.stats.magic.current < spell.required_level() {
             return Err(format!("{spell} needs {} Magic", spell.required_level()));
         }
-    } else if style.combat_type == CombatType::Magic && !has_inbuilt_magic_attack(player) {
-        // The library panics when asked for a magic max hit without a spell or supported staff.
-        return Err("This staff needs a spell selected".into());
     }
 
     let mut player = player.clone();
@@ -223,7 +191,7 @@ fn prepare(player: &Player, monster: &Monster) -> Result<Prepared, String> {
     if monster.stats.hitpoints.base == 0 || monster.stats.hitpoints.current == 0 {
         return Err("The target has no hitpoints".into());
     }
-    calc_active_player_rolls(&mut player, monster);
+    calc_active_player_rolls(&mut player, monster).map_err(|e| e.to_string())?;
     let distribution = get_distribution(&player, monster, false)
         .map_err(|error| format!("Engine could not build a hit distribution: {error:?}"))?;
     Ok(Prepared {
@@ -350,56 +318,6 @@ pub fn ttk_distribution(player: &Player, monster: &Monster) -> Result<TtkSummary
         p90: p90 as f64 * SECONDS_PER_TICK,
         ticks,
     })
-}
-
-/// Whether the engine can work out this weapon's magic max hit without a spell.
-///
-/// Mirrors `charged_staff_max_hit` and `salamander_max_hit` in os-rs, whose
-/// fallback arms panic rather than returning an error, so anything missing here
-/// would take the whole app down.
-fn has_inbuilt_magic_attack(player: &Player) -> bool {
-    matches!(
-        player.gear.weapon.name.as_str(),
-        "Starter staff"
-            | "Warped sceptre"
-            | "Trident of the Seas"
-            | "Trident of the Seas (e)"
-            | "Thammaron's sceptre"
-            | "Accursed sceptre"
-            | "Trident of the Swamp"
-            | "Trident of the Swamp (e)"
-            | "Sanguinesti staff"
-            | "Dawnbringer"
-            | "Tumeken's shadow"
-            | "Bone staff"
-            | "Crystal staff (basic)"
-            | "Corrupted staff (basic)"
-            | "Crystal staff (attuned)"
-            | "Corrupted staff (attuned)"
-            | "Crystal staff (perfected)"
-            | "Corrupted staff (perfected)"
-            | "Swamp lizard"
-            | "Orange salamander"
-            | "Red salamander"
-            | "Black salamander"
-            | "Tecu salamander"
-    )
-}
-
-/// Reject a magic attack the engine would panic on instead of letting it abort
-/// the app. Casting a spell is always fine; otherwise the weapon must be one the
-/// engine knows an inbuilt max hit for.
-pub(super) fn check_magic_is_supported(player: &Player) -> Result<(), String> {
-    if player.combat_type() == CombatType::Magic
-        && player.attrs.spell.is_none()
-        && !has_inbuilt_magic_attack(player)
-    {
-        return Err(format!(
-            "The engine has no magic max hit for {}. Select a spell to cast with it.",
-            player.gear.weapon.name
-        ));
-    }
-    Ok(())
 }
 
 fn has_required_ammunition(player: &Player) -> bool {
