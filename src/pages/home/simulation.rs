@@ -3,48 +3,24 @@
 //! Runs inside the shared worker (see `crate::worker`); off the web target it
 //! runs inline, which is how the tests exercise it.
 
-use super::metrics::calculate_against;
 use super::spec::{LoadoutSpec, TRACKED_PRAYERS};
-use super::strategy::{DeathCharge, RestorePolicy, SpecPlan, SpecStep, spec_cost, spec_weapons};
+use super::strategy::{DeathCharge, RestorePolicy, SpecPlan, SpecStep};
 use super::target::TargetConfig;
 use crate::components::preferred_style;
+use crate::pages::home::metrics::prepare;
 use osrs::calc::rolls::calc_active_player_rolls;
-use osrs::combat::attacks::specs::get_spec_attack_function;
-use osrs::combat::attacks::standard::get_attack_functions;
 use osrs::combat::simulation::Simulation;
 use osrs::combat::spec::{self, CoreCondition, SpecConfig, SpecStrategy};
 use osrs::combat::thralls::Thrall;
 use osrs::constants::SECONDS_PER_TICK;
 use osrs::error::SimulationError;
 use osrs::sims::single_way::{SingleWayConfig, SingleWayFight};
-use osrs::types::equipment::{CombatStance, Weapon};
+use osrs::types::equipment::CombatStance;
 use osrs::types::player::{GearSwitch, Player, SwitchType};
 use osrs::types::stats::SpecEnergy;
 use osrs::utils::logging::FightRecorder;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::rc::Rc;
-use std::sync::LazyLock;
-
-/// Spec weapons whose special attack the engine implements. For the others the
-/// engine silently falls back to a normal attack, which would mislead.
-static IMPLEMENTED_SPECS: LazyLock<HashSet<String>> = LazyLock::new(|| {
-    spec_weapons()
-        .iter()
-        .filter_map(|item| {
-            let mut player = Player::default();
-            let weapon = Weapon::new(&item.name, item.version.as_deref()).ok()?;
-            player.equip_item(Box::new(weapon)).ok()?;
-            let spec = get_spec_attack_function(&player);
-            let attack = get_attack_functions(&player);
-            (!std::ptr::fn_addr_eq(spec, attack)).then(|| item.name.clone())
-        })
-        .collect()
-});
-
-pub fn spec_implemented(weapon_name: &str) -> bool {
-    IMPLEMENTED_SPECS.contains(weapon_name)
-}
 
 pub const TRIAL_CHOICES: [u32; 4] = [1_000, 10_000, 50_000, 100_000];
 
@@ -168,7 +144,7 @@ fn death_charge(choice: DeathCharge) -> Option<spec::DeathCharge> {
     }
 }
 
-/// The main loadout with one step's spec weapon, overrides and prayer applied.
+/// The main loadout with one step's spec weapon, overrides, and prayer applied.
 pub(super) fn spec_player(main: &Player, step: &SpecStep) -> Result<Player, String> {
     let mut player = main.clone();
     player.switches.clear();
@@ -215,32 +191,18 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
     if !restored.warnings.is_empty() {
         return Err(format!("Unknown items: {}", restored.warnings.join(", ")));
     }
-    let mut player = restored.player;
     let monster = input
         .target
         .simulation_monster()
         .ok_or("The target is invalid or its starting HP exceeds its maximum")?;
     // Reuse the calculator's validation so the simulation fails for the same reasons.
     // Validation only: a thrall never makes a setup invalid, so it is left out.
-    calculate_against(&player, &monster, None)?;
-    calc_active_player_rolls(&mut player, &monster).map_err(|e| e.to_string())?;
+    let mut player = prepare(&restored.player, &monster)?.player;
     player.switches.clear();
     player.current_switch = None;
 
     let mut strategies = Vec::with_capacity(input.plan.steps.len());
     for (index, step) in input.plan.steps.iter().enumerate() {
-        if spec_cost(&step.weapon.name).is_none() {
-            return Err(format!(
-                "{} has no special attack in the engine",
-                step.weapon.name
-            ));
-        }
-        if !spec_implemented(&step.weapon.name) {
-            return Err(format!(
-                "The engine does not simulate {}'s special attack yet",
-                step.weapon.name
-            ));
-        }
         let switch_player = spec_player(&player, step)?;
         let label: Rc<str> = Rc::from(format!("{} #{}", step.weapon.name, index + 1));
         let switch = GearSwitch::new(SwitchType::Spec(label), &switch_player, &monster)
@@ -250,7 +212,8 @@ fn build_fight(input: &SingleWayInput) -> Result<SingleWayFight, String> {
             .iter()
             .map(|condition| condition.to_core())
             .collect();
-        let mut strategy = SpecStrategy::new(&switch, Some(conditions));
+        let mut strategy =
+            SpecStrategy::new(&switch, Some(conditions)).map_err(|e| e.to_string())?;
         strategy.max_attempts = step.max_attempts;
         strategy.min_successes = step.min_successes;
         player.switches.push(switch);
@@ -347,6 +310,7 @@ pub fn run_single_way(
 #[cfg(test)]
 mod tests {
     use super::super::examples::examples;
+    use super::super::metrics::calculate_against;
     use super::*;
 
     fn quiet() -> impl FnMut(f64) {
@@ -420,7 +384,7 @@ mod tests {
         use super::super::strategy::weapon_styles;
         use osrs::types::equipment::CombatStyle;
 
-        let bgs = super::super::strategy::simulated_spec_weapons()
+        let bgs = super::super::strategy::spec_weapons()
             .iter()
             .find(|weapon| weapon.name == "Bandos godsword")
             .map(super::super::spec::GearItem::from_catalog)
@@ -487,7 +451,7 @@ mod tests {
     fn spec_style_changes_the_attack_roll_but_not_a_fixed_defence() {
         use super::super::strategy::weapon_styles;
 
-        let bgs = super::super::strategy::simulated_spec_weapons()
+        let bgs = super::super::strategy::spec_weapons()
             .iter()
             .find(|weapon| weapon.name == "Bandos godsword")
             .map(super::super::spec::GearItem::from_catalog)
@@ -541,7 +505,7 @@ mod tests {
             .player;
 
         for name in ["Bandos godsword", "Dragon warhammer", "Dragon dagger"] {
-            let weapon = super::super::strategy::simulated_spec_weapons()
+            let weapon = super::super::strategy::spec_weapons()
                 .iter()
                 .find(|weapon| weapon.name == name)
                 .map(super::super::spec::GearItem::from_catalog)
@@ -578,7 +542,7 @@ mod tests {
     #[test]
     fn every_offered_spec_weapon_reports_metrics_or_a_reason() {
         use super::super::metrics::get_spec_metrics;
-        use super::super::strategy::{simulated_spec_weapons, spec_defence_type};
+        use super::super::strategy::{spec_defence_type, spec_weapons};
 
         let target = TargetConfig::example("General Graardor", 0, 0, 0);
         let monster = target.combat_monster().unwrap();
@@ -590,7 +554,7 @@ mod tests {
             .to_player()
             .player;
 
-        for entry in simulated_spec_weapons() {
+        for entry in spec_weapons() {
             let step = SpecStep::new(1, super::super::spec::GearItem::from_catalog(entry));
             let style_type = step
                 .style_combat_type()
@@ -614,7 +578,7 @@ mod tests {
     /// the simulation models it through `specs.rs` rather than `dps_calc`.
     #[test]
     fn a_spec_weapon_still_simulates() {
-        let claws = super::super::strategy::simulated_spec_weapons()
+        let claws = super::super::strategy::spec_weapons()
             .iter()
             .find(|weapon| weapon.name == "Burning claws")
             .map(super::super::spec::GearItem::from_catalog)
@@ -645,7 +609,7 @@ mod tests {
     #[test]
     fn multi_hitsplat_specs_beat_a_normal_attack() {
         use super::super::metrics::{calculate_against, get_spec_metrics};
-        use super::super::strategy::{simulated_spec_weapons, spec_defence_type};
+        use super::super::strategy::{spec_defence_type, spec_weapons};
 
         let target = TargetConfig::example("General Graardor", 0, 0, 0);
         let monster = target.combat_monster().unwrap();
@@ -658,7 +622,7 @@ mod tests {
             .player;
 
         for name in ["Dragon claws", "Burning claws", "Dragon halberd"] {
-            let entry = simulated_spec_weapons()
+            let entry = spec_weapons()
                 .iter()
                 .find(|weapon| weapon.name == name)
                 .unwrap_or_else(|| panic!("{name} is offered as a spec weapon"));
@@ -729,13 +693,6 @@ mod tests {
             calculate_against(&player, &monster, Some(ThrallChoice::GreaterMelee.engine()))
                 .unwrap();
         assert!(greater.dps > lesser.dps);
-    }
-
-    #[test]
-    fn implemented_specs_are_detected() {
-        assert!(spec_implemented("Bandos godsword"));
-        assert!(spec_implemented("Dragon warhammer"));
-        assert!(!spec_implemented("Not a weapon"));
     }
 
     #[test]

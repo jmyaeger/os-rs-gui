@@ -5,7 +5,7 @@
 
 use super::HomeState;
 use super::metrics::get_spec_metrics;
-use super::simulation::{spec_implemented, spec_player};
+use super::simulation::spec_player;
 use super::spec::{GearItem, OFFENSIVE_PRAYERS, SLOTS};
 use crate::components::{SearchBar, equipment_catalog};
 use dioxus::prelude::*;
@@ -34,16 +34,6 @@ static SPEC_WEAPONS: LazyLock<Vec<EquipmentJson>> = LazyLock::new(|| {
     weapons
 });
 
-/// The subset whose special attack the simulation actually models. Offering the
-/// rest would silently fall back to a normal attack.
-static SIMULATED_SPEC_WEAPONS: LazyLock<Vec<EquipmentJson>> = LazyLock::new(|| {
-    SPEC_WEAPONS
-        .iter()
-        .filter(|item| spec_implemented(&item.name))
-        .cloned()
-        .collect()
-});
-
 static SWITCH_ITEMS: LazyLock<Vec<EquipmentJson>> = LazyLock::new(|| {
     equipment_catalog()
         .iter()
@@ -54,10 +44,6 @@ static SWITCH_ITEMS: LazyLock<Vec<EquipmentJson>> = LazyLock::new(|| {
 
 pub fn spec_weapons() -> &'static [EquipmentJson] {
     &SPEC_WEAPONS
-}
-
-pub fn simulated_spec_weapons() -> &'static [EquipmentJson] {
-    &SIMULATED_SPEC_WEAPONS
 }
 
 /// The defence roll a special attack is checked against, and whether the weapon
@@ -418,16 +404,17 @@ impl SpecPlan {
 
 fn default_spec_weapon(player: &Player) -> Option<GearItem> {
     let main = &player.gear.weapon;
-    if spec_cost(&main.name).is_some() && spec_implemented(&main.name) {
+    if spec_cost(&main.name).is_some() {
         return player
             .get_slot(&GearSlot::Weapon)
             .map(|item| GearItem::from_equipped(GearSlot::Weapon, item.as_ref()));
     }
-    simulated_spec_weapons()
-        .iter()
-        .find(|weapon| weapon.name == "Dragon warhammer")
-        .or_else(|| simulated_spec_weapons().first())
-        .map(GearItem::from_catalog)
+    Some(GearItem {
+        name: "Dragon warhammer".to_string(),
+        slot: "weapon".to_string(),
+        version: None,
+        image: "assets/equipment/Dragon warhammer.png".to_string(),
+    })
 }
 
 fn filter_item(item: &EquipmentJson, term: &str) -> bool {
@@ -482,7 +469,7 @@ pub fn StrategyPanel(monster: ReadSignal<Option<Monster>>) -> Element {
                 h2 { class: "card-title", "Special attacks" }
                 button {
                     class: "home-button",
-                    disabled: simulated_spec_weapons().is_empty(),
+                    disabled: spec_weapons().is_empty(),
                     onclick: move |_| {
                         let Some(weapon) = default_spec_weapon(&player.peek()) else { return };
                         let id = state.plan.peek().steps.iter().map(|step| step.id).max().unwrap_or(0)
@@ -802,7 +789,7 @@ fn StrategyRow(
             if editing_weapon() {
                 div { class: "strategy-search",
                     SearchBar {
-                        items: simulated_spec_weapons().to_vec(),
+                        items: spec_weapons().to_vec(),
                         filter_fn: filter_item,
                         render_item,
                         get_key: item_key,

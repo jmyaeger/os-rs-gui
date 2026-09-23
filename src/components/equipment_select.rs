@@ -4,19 +4,20 @@ use osrs::types::equipment::{CombatStance, CombatStyle, EquipmentJson, Weapon, a
 use osrs::types::player::Player;
 use std::sync::LazyLock;
 
-/// The engine's catalog, minus items the calculator cannot equip. Referencing the
-/// engine's copy rather than a second bundled one keeps the search, the editor
-/// and the engine's own name-based rules in agreement.
+/// The engine's catalog, minus items the calculator cannot equip.
 static EQUIPMENT_ITEMS: LazyLock<Vec<EquipmentJson>> = LazyLock::new(|| {
     all_equipment()
         .iter()
         .filter(|item| {
-            item.name != "Unarmed"
-                && (item.slot != "Weapon"
-                    || (item.category.is_some()
-                        && item.speed.is_some()
-                        && item.attack_range.is_some()
-                        && item.is_two_handed.is_some()))
+            if item.name == "Unarmed" {
+                return false;
+            }
+
+            if item.slot.eq_ignore_ascii_case("weapon") {
+                (*item).clone().into_weapon().is_ok()
+            } else {
+                (*item).clone().into_armor().is_ok()
+            }
         })
         .cloned()
         .collect()

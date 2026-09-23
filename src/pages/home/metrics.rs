@@ -104,13 +104,13 @@ pub struct TtkSummary {
     pub ticks: Vec<f64>,
 }
 
-struct Prepared {
-    player: Player,
+pub(super) struct Prepared {
+    pub(super) player: Player,
     distribution: AttackDistribution,
 }
 
 /// Validate the loadout and build its hit distribution against the target's starting state.
-fn prepare(player: &Player, monster: &Monster) -> Result<Prepared, String> {
+pub(super) fn prepare(player: &Player, monster: &Monster) -> Result<Prepared, String> {
     let style = player
         .gear
         .weapon
@@ -162,32 +162,24 @@ fn prepare(player: &Player, monster: &Monster) -> Result<Prepared, String> {
     if !has_required_ammunition(&player) {
         return Err("This weapon needs matching ammunition".into());
     }
-    if (player.is_using_magic() || player.is_using_ranged())
-        && player
-            .gear
-            .weapon
-            .version
-            .as_deref()
-            .is_some_and(|version| {
-                let version = version.to_lowercase();
-                ["uncharged", "inactive", "empty", "broken"]
-                    .iter()
-                    .any(|state| version.contains(state))
-            })
-    {
-        return Err("This weapon is uncharged".into());
-    }
+    // TODO: replace this with validation on the engine side
+    // if (player.is_using_magic() || player.is_using_ranged())
+    //     && player
+    //         .gear
+    //         .weapon
+    //         .version
+    //         .as_deref()
+    //         .is_some_and(|version| {
+    //             let version = version.to_lowercase();
+    //             ["uncharged", "inactive", "empty", "broken"]
+    //                 .iter()
+    //                 .any(|state| version.contains(state))
+    //         })
+    // {
+    //     return Err("This weapon is uncharged".into());
+    // }
     player.update_bonuses();
     player.update_set_effects();
-    if player.set_effects.full_dharoks {
-        // The library subtracts current HP from base HP without saturation.
-        // Overhealing gives no Dharok bonus, rather than overflowing that subtraction.
-        player.stats.hitpoints.current = player
-            .stats
-            .hitpoints
-            .current
-            .min(player.stats.hitpoints.base);
-    }
     if monster.stats.hitpoints.base == 0 || monster.stats.hitpoints.current == 0 {
         return Err("The target has no hitpoints".into());
     }

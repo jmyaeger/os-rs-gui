@@ -28,7 +28,6 @@ pub const SLOTS: [GearSlot; 11] = [
     GearSlot::Ring,
 ];
 
-/// Prayers the calculator tracks, in the order they are summarized.
 pub const TRACKED_PRAYERS: [Prayer; 21] = [
     Prayer::Piety,
     Prayer::Rigour,
@@ -53,9 +52,6 @@ pub const TRACKED_PRAYERS: [Prayer; 21] = [
     Prayer::MysticWill,
 ];
 
-/// One equipped item, identified the way the equipment catalog identifies it.
-/// Prayers worth swapping to for a special attack. Defence-only prayers are
-/// excluded because nothing in a spec calculation reads them.
 pub const OFFENSIVE_PRAYERS: [Prayer; 18] = [
     Prayer::Piety,
     Prayer::Rigour,
@@ -232,7 +228,6 @@ impl BaseStats {
     }
 }
 
-/// Situational boosts the calculator exposes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Conditions {
@@ -280,7 +275,6 @@ impl Conditions {
         boosts.soulreaper_stacks = self.soulreaper_stacks;
     }
 
-    /// Labels for the situational boosts that are switched on, in display order.
     pub fn active_labels(&self) -> Vec<String> {
         let mut labels = Vec::new();
         for (enabled, label) in [
